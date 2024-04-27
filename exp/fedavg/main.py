@@ -108,6 +108,7 @@ def add_args(parser):
     parser.add_argument('--clip', type=bool, default=True, help='Clip images during generation')
     parser.add_argument('--seed', type=int, default=2024, help='Random seed')
     parser.add_argument('--device', type=str, default='cuda' if torch.cuda.is_available() else 'cpu', help='Device to use for training')
+    parser.add_argument("--tqdm", action="store_true")
 
     return parser
 

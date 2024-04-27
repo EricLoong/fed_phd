@@ -7,4 +7,5 @@ python main.py --dataset 'cifar10' \
 --comm_round 500000 \
 --seed 2023 \
 --save \
---calculate_fid
+--calculate_fid \
+--tqdm
