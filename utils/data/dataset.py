@@ -48,14 +48,14 @@ def dataset_wrapper(dataset, data_dir, image_size, augment_horizontal_flip=True,
         if dataset == 'cifar10':
             train_set = CIFAR10(root=data_dir, train=True, download=True, transform=transform)
             test_set = CIFAR10(root=data_dir, train=False, download=True, transform=transform)
-            fullset = torch.utils.data.ConcatDataset([train_set, test_set])
+            #fullset = torch.utils.data.ConcatDataset([train_set, test_set])
 
             if partial_data and type(net_dataidx_map) !=type(None):
                 indices = net_dataidx_map
-                dataSet = Subset(fullset, indices)
+                dataSet = Subset(train_set, indices)
                 print(colored(f'Partitioned CIFAR10 Dataset: {len(dataSet)} images.', info_color))
             else:
-                dataSet = fullset
+                dataSet = train_set
                 print(colored(f'Loaded CIFAR10 dataset with {len(dataSet)} images.', info_color))
         else:
             raise ValueError('Dataset not supported')
