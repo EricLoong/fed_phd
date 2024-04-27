@@ -209,7 +209,7 @@ class Trainer:
             self.logger.info(f"Epoch {epoch} Loss: {loss.item()}")
 
     def ddim_image_generation(self, current_step):
-        print(f"Generating images at step {current_step}")
+        #print(f"Generating images at step {current_step}")
         with torch.no_grad():
             for sampler in self.ddim_samplers:
                 if current_step % sampler.sample_every == 0:
@@ -238,8 +238,15 @@ class Trainer:
                     sample_func = partial(sampler.sample, self.diffusion_model)
                     ddim_cur_fid, _ = self.fid_scorer.fid_score(sample_func, sampler.num_fid_sample)
                     self.logger.info(f"FID score using {sampler.sampler_name} at step {current_step}: {ddim_cur_fid}")
+                    self.save_model(current_step, sampler.sampler_name, ddim_cur_fid)
 
+    def save_model(self, step, sampler_name, fid_score):
+        # Construct a filename that includes the step, sampler name, and FID score
+        model_filename = f"{self.result_folder}/model_{sampler_name}_step_{step}_fid_{fid_score:.4f}.pt"
 
+        # Save the model's state dictionary
+        torch.save(self.diffusion_model.state_dict(), model_filename)
+        self.logger.info(f"Model saved at step {step} with FID {fid_score:.4f} using {sampler_name}")
 
 
 
