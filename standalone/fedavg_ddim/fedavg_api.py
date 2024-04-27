@@ -155,7 +155,7 @@ class fedavg_api(object):
         return ema_global
 
     def _model_trainer_locallize(self,model_trainer, args, logger, partition_index):
-        model = copy.deepcopy(model_trainer.model)
+        model = copy.deepcopy(model_trainer.diffusion_model)
         ddim_samplers = copy.deepcopy(model_trainer.ddim_samplers)
         local_trainer = Trainer(diffusion_model=model, args=args, logger=logger,
                                 ddim_samplers=ddim_samplers, subset_data=True,data_indices=partition_index)
