@@ -200,19 +200,12 @@ class Trainer:
         print("Starting Training for {} epochs".format(epochs))
         for epoch in range(epochs):
             self.diffusion_model.train()
-            start_time = time.time()
-            for i, data in enumerate(self.dataLoader):
-                batch_start_time = time.time()
-                self.optimizer.zero_grad()
-                image = data.to(self.device)
-                loss = self.diffusion_model(image)
-                loss.backward()
-                nn.utils.clip_grad_norm_(self.diffusion_model.parameters(), self.max_grad_norm)
-                self.optimizer.step()
-                print(f"Batch {i} processed in {time.time() - batch_start_time} seconds")
-
-            epoch_duration = time.time() - start_time
-            print(f"Epoch {epoch + 1} completed in {epoch_duration} seconds, loss: {loss.item()}")
+            self.optimizer.zero_grad()
+            image = next(self.dataLoader).to(self.device)
+            loss = self.diffusion_model(image)
+            loss.backward()
+            nn.utils.clip_grad_norm_(self.diffusion_model.parameters(), self.max_grad_norm)
+            self.optimizer.step()
 
     def ddim_image_generation(self, current_step):
         print(f"Generating images at step {current_step}")
