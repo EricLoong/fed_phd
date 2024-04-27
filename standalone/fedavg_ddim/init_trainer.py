@@ -197,7 +197,7 @@ class Trainer:
 
     def train(self):
         epochs = self.args.epochs
-        print("Starting Training for {} epochs".format(epochs))
+        #print("Starting Training for {} epochs".format(epochs))
         for epoch in range(epochs):
             self.diffusion_model.train()
             self.optimizer.zero_grad()
@@ -206,6 +206,7 @@ class Trainer:
             loss.backward()
             nn.utils.clip_grad_norm_(self.diffusion_model.parameters(), self.max_grad_norm)
             self.optimizer.step()
+            self.logger.info(f"Epoch {epoch} Loss: {loss.item()}")
 
     def ddim_image_generation(self, current_step):
         print(f"Generating images at step {current_step}")

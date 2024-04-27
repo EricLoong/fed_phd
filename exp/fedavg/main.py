@@ -140,9 +140,9 @@ def load_model(args):
     model = diffusion.to(args.device)
     return model
 
-def setup_trainer(args, diffusion_model, ddim_samplers):
+def setup_trainer(args, diffusion_model, ddim_samplers,logger):
     # Initialize the trainer with the provided arguments
-    trainer = Trainer(args=args,
+    trainer = Trainer(args=args,logger=logger,
         diffusion_model=diffusion_model,
         batch_size=args.batch_size,
         lr=args.lr,
@@ -210,7 +210,7 @@ if __name__ == "__main__":
     # print(model)
     # pretrained_model_path = os.path.join(cur_dir, 'results', args.dataset, '20240404_005104fedavg-iid-mdlmedium-u-cm50000-total_clnt1-neighbor1-seed2023.pth')
     ddim_samplers = setup_ddim_sampler(args, diffusion_model) # Just one sampler in defalt
-    global_model_trainer = setup_trainer(args, diffusion_model, ddim_samplers=ddim_samplers)
+    global_model_trainer = setup_trainer(args, diffusion_model, ddim_samplers=ddim_samplers,logger=logger)
     logger.info(diffusion_model)
 
     data_info = partition_data_indices_cifar10(datadir=args.data_dir, partition=args.partition_method, n_nets=args.client_num_in_total, n_cls=args.partition_alpha)
