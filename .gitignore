@@ -1,0 +1,9 @@
+# Ignore FashionMNIST dataset files
+*images-idx3-ubyte
+*labels-idx1-ubyte
+*.gz
+*.png
+/data
+*.pt
+*.log
+*.pyc
