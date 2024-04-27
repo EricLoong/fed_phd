@@ -1,6 +1,7 @@
 import torch
 import torchvision
 import torchvision.transforms as transforms
+from torchvision.transforms import Lambda
 from torch.utils.data import Dataset, Subset
 from termcolor import colored
 import ssl
@@ -30,10 +31,10 @@ class CustomDataset(Dataset):
 def dataset_wrapper(dataset, data_dir, image_size, augment_horizontal_flip=True, info_color='green', min1to1=True, partial_data=False, net_dataidx_map=None):
     transform = transforms.Compose([
         transforms.Resize(image_size),
-        transforms.RandomHorizontalFlip() if augment_horizontal_flip else transforms.Identity(),
+        transforms.RandomHorizontalFlip() if augment_horizontal_flip else Lambda(lambda x: x),
         transforms.CenterCrop(image_size),
         transforms.ToTensor(),
-        transforms.Normalize((0.5,), (0.5,)) if min1to1 else transforms.Identity()
+        transforms.Normalize((0.5,), (0.5,)) if min1to1 else Lambda(lambda x: x)
     ])
 
     if os.path.isdir(dataset):
