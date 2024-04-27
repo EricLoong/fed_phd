@@ -209,10 +209,11 @@ class Trainer:
             self.logger.info(f"Epoch {epoch} Loss: {loss.item()}")
 
     def ddim_image_generation(self, current_step):
-        #print(f"Generating images at step {current_step}")
+
         with torch.no_grad():
             for sampler in self.ddim_samplers:
                 if current_step % sampler.sample_every == 0:
+                    print(f"Generating images at step {current_step}")
                     batches = num_to_groups(self.num_samples, self.batch_size)
                     c_batch = np.insert(np.cumsum(np.array(batches)), 0, 0)
                     imgs = []
@@ -231,10 +232,10 @@ class Trainer:
                     self.logger.info(f"Images generated using {sampler.sampler_name} saved.")
 
     def ddim_fid_calculation(self, current_step):
-        print(f"Calculating FID at step {current_step}")
         with torch.no_grad():
             for sampler in self.ddim_samplers:
                 if sampler.calculate_fid and current_step % sampler.sample_every == 0:
+                    print(f"Calculating FID at step {current_step}")
                     sample_func = partial(sampler.sample, self.diffusion_model)
                     ddim_cur_fid, _ = self.fid_scorer.fid_score(sample_func, sampler.num_fid_sample)
                     self.logger.info(f"FID score using {sampler.sampler_name} at step {current_step}: {ddim_cur_fid}")
