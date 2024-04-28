@@ -55,7 +55,7 @@ def add_args(parser):
                         help='dataset used for training')
 
     parser.add_argument('--data_dir', type=str, default=os.path.join(base_path, 'data') if base_path else '/nfs/fed_diff/data/', help='Data directory')
-    parser.add_argument('--results_dir', type=str, default=os.path.join(base_path, 'results') if base_path else '/nfs/fed_diff/results', help='Results directory')
+    parser.add_argument('--results_dir', type=str, default='./results', help='Results directory')
 
     parser.add_argument('--partition_method', type=str, default='iid', metavar='N',
                         help="current supporting two types of data partition, one called 'iid' short for identically and independently distributed"
@@ -101,7 +101,7 @@ def add_args(parser):
     parser.add_argument('--calculate_fid', action='store_true', help='Calculate FID during training')
     parser.add_argument('--num_fid_sample', type=int, default=30000, help='Number of samples to use for FID calculation')
     parser.add_argument('--save', action='store_true', help='Save samples during training')
-    parser.add_argument('--num_samples', type=int, default=16, help='Number of samples to generate during training')
+    parser.add_argument('--num_samples', type=int, default=36, help='Number of samples to generate during training')
     parser.add_argument('--cpu_percentage', type=float, default=0.0,
                         help='Percentage of CPU cores to use for data loading')
     parser.add_argument('--fid_estimate_batch_size', type=int, default=128, help='Batch size for FID estimation')
