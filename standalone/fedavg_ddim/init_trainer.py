@@ -18,6 +18,7 @@ import datetime
 from termcolor import colored
 from utils.centralized_src.tools import FID,num_to_groups
 import numpy as np
+from torch.optim.lr_scheduler import LambdaLR
 
 def cycle_with_label(dl):
     while True:
@@ -97,7 +98,7 @@ class Trainer:
             os.makedirs(os.path.join(self.ddpm_result_folder, 'clip'), exist_ok=True)
         if clip is False or clip == 'both':
             os.makedirs(os.path.join(self.ddpm_result_folder, 'no_clip'), exist_ok=True)
-
+        os.makedirs(self.result_folder, exist_ok=True)
         dataset = self.dataset
         # Dataset & DataLoader & Optimizer
         dataSet = dataset_wrapper(dataset,data_dir= self.args.data_dir, image_size=self.image_size, partial_data=subset_data,net_dataidx_map=data_indices)
@@ -111,6 +112,14 @@ class Trainer:
                                 num_workers=num_workers, pin_memory=True)
         self.dataLoader = cycle(dataLoader) if os.path.isdir(dataset) else cycle_with_label(dataLoader)
         self.optimizer = Adam(self.diffusion_model.parameters(), lr=lr)
+
+        if self.args.warmup_steps > 0:
+            self.scheduler = LambdaLR(
+                self.optimizer,
+                lr_lambda=lambda step: min((step + 1) / self.args.warmup_steps, 1.0)
+            )
+        else:
+            self.scheduler = None
 
         # DDIM sampler setting
         self.ddim_sampling_schedule = list()
@@ -195,7 +204,7 @@ class Trainer:
     def set_id(self, trainer_id):
         self.id = trainer_id
 
-    def train(self):
+    def train(self,round_idx):
         epochs = self.args.epochs
         #print("Starting Training for {} epochs".format(epochs))
         for epoch in range(epochs):
@@ -206,7 +215,10 @@ class Trainer:
             loss.backward()
             nn.utils.clip_grad_norm_(self.diffusion_model.parameters(), self.max_grad_norm)
             self.optimizer.step()
-            self.logger.info(f"Epoch {epoch} Loss: {loss.item()}")
+            if self.scheduler:
+                self.scheduler.step()  # Step the scheduler after each batch
+            if round_idx % self.args.sample_every == 0:
+                self.logger.info(f"Round {round_idx} Loss: {loss.item()}")
 
     def ddim_image_generation(self, current_step):
 

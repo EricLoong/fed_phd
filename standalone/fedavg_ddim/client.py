@@ -13,7 +13,7 @@ class client:
     def train(self, w_global, round_idx):
         self.model_trainer.set_model_params(w_global)
         self.model_trainer.set_id(self.client_idx)
-        self.model_trainer.train()
+        self.model_trainer.train(round_idx=round_idx)
         weights = self.model_trainer.get_model_params()
         return weights
 
