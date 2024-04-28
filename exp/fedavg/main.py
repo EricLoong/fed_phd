@@ -96,7 +96,7 @@ def add_args(parser):
         help="learning rate (default: 0.00001)",
     )
 
-    parser.add_argument('--sampling_steps', type=int, default=100, help='Number of steps to sample from the diffusion model')
+    parser.add_argument('--sampling_steps', type=int, default=20, help='Number of steps to sample from the diffusion model')
     parser.add_argument('--sample_every', type=int, default=5000, help='Sample every n steps')
     parser.add_argument('--calculate_fid', action='store_true', help='Calculate FID during training')
     parser.add_argument('--num_fid_sample', type=int, default=10000, help='Number of samples to use for FID calculation')
