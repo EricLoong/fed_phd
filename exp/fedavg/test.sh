@@ -4,7 +4,7 @@
 epochs_arr=(1 2 5)
 
 # Declare an array of client_num_in_total values
-clients_arr=(1, 5 10 20)
+clients_arr=(1 5 10 20)
 
 # Loop over epochs
 for epoch in "${epochs_arr[@]}"; do
