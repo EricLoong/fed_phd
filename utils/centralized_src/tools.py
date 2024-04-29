@@ -63,11 +63,11 @@ class FID:
         if os.path.exists(path):
             with np.load(path) as f:
                 m2, s2 = f['m2'], f['s2']
-            print(colored('Successfully loaded pre-computed Inception feature from cached file\n', 'light_magenta'))
+            print(colored('Successfully loaded pre-computed Inception feature from cached file\n', 'green'))
         else:
             stacked_real_features = list()
             print(colored('Computing Inception features for {} '
-                          'samples from real dataset.'.format(len(self.dataLoader.dataset)), 'light_magenta'))
+                          'samples from real dataset.'.format(len(self.dataLoader.dataset)), 'green'))
             for batch in tqdm(self.dataLoader, desc='Calculating stats for data distribution', leave=False):
                 real_samples = batch.to(self.device) if self.no_label else batch[0].to(self.device)
                 real_features = self.calculate_inception_features(real_samples)
@@ -77,7 +77,7 @@ class FID:
             m2 = np.mean(stacked_real_features, axis=0)
             s2 = np.cov(stacked_real_features, rowvar=False)
             np.savez_compressed(path, m2=m2, s2=s2)
-            print(colored('Dataset stats cached to {} for future use\n'.format(path), 'light_magenta'))
+            print(colored('Dataset stats cached to {} for future use\n'.format(path), 'green'))
         return m2, s2
 
     @torch.inference_mode()
