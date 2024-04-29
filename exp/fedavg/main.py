@@ -109,6 +109,7 @@ def add_args(parser):
     parser.add_argument('--seed', type=int, default=2024, help='Random seed')
     parser.add_argument('--device', type=str, default='cuda' if torch.cuda.is_available() else 'cpu', help='Device to use for training')
     parser.add_argument("--tqdm", action="store_true")
+    parser.add_argument('--warmup_steps', type=int, default=5000, help='Number of warmup steps for the scheduler;5000 for cifar10')
 
     return parser
 

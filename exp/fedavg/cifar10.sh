@@ -4,8 +4,8 @@ python main.py --dataset 'cifar10' \
 --lr 2e-4 \
 --epochs 1 \
 --client_num_in_total 1 --frac 1 \
---sample_every 10000 \
---comm_round 800000 \
+--sample_every 5000 \
+--comm_round 500000 \
 --seed 2023 \
 --save \
 --calculate_fid \
