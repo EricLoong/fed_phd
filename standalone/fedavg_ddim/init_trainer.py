@@ -219,6 +219,9 @@ class Trainer:
                 self.scheduler.step()  # Step the scheduler after each batch
             if round_idx % self.args.sample_every == 0:
                 self.logger.info(f"Round {round_idx} Loss: {loss.item()}")
+            if self.args.central_train:
+                self.ddim_image_generation(epoch)
+                self.ddim_fid_calculation(epoch)
 
     def ddim_image_generation(self, current_step):
 
@@ -251,7 +254,10 @@ class Trainer:
                     sample_func = partial(sampler.sample, self.diffusion_model)
                     ddim_cur_fid, _ = self.fid_scorer.fid_score(sample_func, sampler.num_fid_sample)
                     self.logger.info(f"FID score using {sampler.sampler_name} at step {current_step}: {ddim_cur_fid}")
-                    self.save_model(current_step, sampler.sampler_name, ddim_cur_fid)
+                    if sampler.best_fid[0] > ddim_cur_fid:
+                        sampler.best_fid[0] = ddim_cur_fid
+                        if sampler.save:
+                            self.save_model(current_step, sampler.sampler_name, ddim_cur_fid)
 
     def save_model(self, step, sampler_name, fid_score):
         # Construct a filename that includes the step, sampler name, and FID score

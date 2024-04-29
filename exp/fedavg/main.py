@@ -111,6 +111,7 @@ def add_args(parser):
     parser.add_argument("--tqdm", action="store_true")
     parser.add_argument('--warmup_steps', type=int, default=5000, help='Number of warmup steps for the scheduler;5000 for cifar10')
     parser.add_argument('--fid_freq', type=int, default=100000, help='Frequency of FID calculation')
+    parser.add_argument('--central_train', action='store_true', help='Train a centralized model')
     return parser
 
 
