@@ -1,9 +1,10 @@
 #!/bin/bash
 python main.py --dataset 'cifar10' \
+--partition_method 'ncls'\
 --batch_size 128 \
 --lr 2e-4 \
---epochs 1 \
---client_num_in_total 1 --frac 1 \
+--epochs 5 \
+--client_num_in_total 20 --frac 0.2 \
 --sample_every 5000 \
 --comm_round 500000 \
 --seed 2023 \
