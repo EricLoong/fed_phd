@@ -8,7 +8,7 @@ import numpy as np
 import torch
 from standalone.fedavg_ddim.init_trainer import Trainer
 import torchvision
-from standalone.fedavg_ddim.client import client
+from standalone.fedavg_ddim.client import Client
 from pathlib import Path
 import math
 
@@ -21,17 +21,16 @@ class fedavg_api(object):
         self.client_list = []
         self.train_data_local_num_dict = train_data_local_num_dict
         self.model_trainer = model_trainer
-        self._setup_clients(train_data_local_num_dict,model_trainer, data_map_idx)
+        self._setup_clients(train_data_local_num_dict, data_map_idx)
         self.init_stat_info()
         self.results_folder = Path('./results')
         self.best_fid = float('inf')
 
-    def _setup_clients(self, train_data_local_num_dict,model_trainer, data_map_idx):
+    def _setup_clients(self, train_data_local_num_dict, data_map_idx):
         self.logger.info("############setup_clients (START)#############")
         for client_idx in range(self.args.client_num_in_total):
-            local_trainer = self._model_trainer_locallize(model_trainer=model_trainer,args=self.args,logger=self.logger,partition_index=data_map_idx[client_idx])
-            c = client(client_idx,
-                       train_data_local_num_dict[client_idx], self.args, self.device, local_trainer, self.logger)
+            # Each client uses the shared model_trainer
+            c = Client(client_idx, train_data_local_num_dict[client_idx], self.args, self.device, self.model_trainer, self.logger, data_map_idx[client_idx])
             self.client_list.append(c)
         self.logger.info("############setup_clients (END)#############")
 
@@ -50,8 +49,7 @@ class fedavg_api(object):
         for round_idx in comm_round_iterable:
             self.logger.info("################Communication round : {}".format(round_idx))
             w_locals = []
-            client_indexes = self._client_sampling(round_idx, self.args.client_num_in_total,
-                                                   self.args.client_num_per_round)
+            client_indexes = self._client_sampling(round_idx, self.args.client_num_in_total, self.args.client_num_per_round)
             client_indexes = np.sort(client_indexes)
 
             self.logger.info("client_indexes = " + str(client_indexes))
@@ -63,15 +61,11 @@ class fedavg_api(object):
                 # update meta components in personal network
                 w_per = client.train(copy.deepcopy(w_global), round_idx)  # Get both model and EMA parameters
                 w_locals.append((client.get_sample_number(), copy.deepcopy(w_per)))
-                #w_per_mdls[cur_clnt] = copy.deepcopy(w_per)
-                # self.logger.info("local weights = " + str(w))
-                w_locals.append((client.get_sample_number(), copy.deepcopy(w_per)))
 
             # update global meta weights
             w_global = self._aggregate(w_locals)
             self.global_evaluation(w_global, round_idx=round_idx)
             torch.cuda.empty_cache()
-            #print(torch.cuda.memory_summary())
         return w_global
 
     def global_evaluation(self, w_global, round_idx):
@@ -96,8 +90,6 @@ class fedavg_api(object):
         else:
             print(f"Total parameter difference after update: {total_difference}")
         return total_difference
-
-
 
     def save_model_checkpoint(self, w_global, round_idx):
         save_path = self.results_folder / f'global_model_{round_idx}.pt'
@@ -153,15 +145,6 @@ class fedavg_api(object):
                 else:
                     ema_global[k] += ema_params[k] * (sample_num / training_num)
         return ema_global
-
-    def _model_trainer_locallize(self,model_trainer, args, logger, partition_index):
-        model = copy.deepcopy(model_trainer.diffusion_model)
-        ddim_samplers = copy.deepcopy(model_trainer.ddim_samplers)
-        local_trainer = Trainer(diffusion_model=model, args=args, logger=logger,
-                                ddim_samplers=ddim_samplers, subset_data=True,data_indices=partition_index)
-        return local_trainer
-
-
 
     def init_stat_info(self):
         self.stat_info = {}
