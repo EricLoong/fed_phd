@@ -1,9 +1,7 @@
-# Modified trainer for federated learning from the Trainer in utils/centralized_src/trainer.py
 import time
 import os
 import math
 import copy
-from utils.data.dataset import dataset_wrapper
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
@@ -16,7 +14,7 @@ from functools import partial
 from tqdm import tqdm
 import datetime
 from termcolor import colored
-from utils.centralized_src.tools import FID,num_to_groups
+from utils.centralized_src.tools import FID, num_to_groups
 import numpy as np
 from torch.optim.lr_scheduler import LambdaLR
 
@@ -26,12 +24,10 @@ def cycle_with_label(dl):
             img, label = data
             yield img
 
-
 def cycle(dl):
     while True:
         for data in dl:
             yield data
-
 
 class Trainer:
     def __init__(self, diffusion_model, batch_size=32, lr=2e-5, ddim_samplers=None,
@@ -99,7 +95,7 @@ class Trainer:
                 self.cal_fid = True
                 if self.tqdm_sampler_name is None:
                     self.tqdm_sampler_name = sampler.sampler_name
-                sampler.num_fid_sample = sampler.num_fid_sample if sampler.num_fid_sample is not None else len(self.dataSet)
+                sampler.num_fid_sample = sampler.num_fid_sample if sampler.num_fid_sample is not None else 0
                 self.fid_score_log[sampler.sampler_name] = list()
             if sampler.fixed_noise:
                 sampler.register_buffer('noise', torch.randn([self.num_samples, sampler.channel,
