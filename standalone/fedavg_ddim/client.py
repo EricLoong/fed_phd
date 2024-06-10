@@ -25,18 +25,8 @@ class Client:
     def train(self, w_global, round_idx):
         self.model_trainer.set_model_params(w_global)
         self.model_trainer.set_data_loader(self.dataLoader)  # Set the client's DataLoader in the Trainer
+        print(f"Client {self.client_idx} DataLoader Output Type: {type(next(iter(self.dataLoader)))}")
         self.model_trainer.train(round_idx)
         w_local = self.model_trainer.get_model_params()
         return w_local
 
-    def get_sample_number(self):
-        return self.train_data_local_num
-
-    def local_test(self, w_global, use_test_data):
-        self.model_trainer.set_model_params(w_global)
-        if use_test_data:
-            test_data = self.dataLoader
-        else:
-            test_data = self.train_data
-        test_metrics = self.model_trainer.test(test_data)
-        return test_metrics
