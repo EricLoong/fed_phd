@@ -140,6 +140,8 @@ class Trainer:
             self.optimizer.zero_grad()
             image = next(self.dataLoader)
             print(f"DataLoader Output Type: {type(image)}")
+            if isinstance(image, list):
+                image = torch.stack(image)  # Convert list of tensors to a single tensor
             print(f"DataLoader Output Shape: {image.shape}")
             image = image.to(self.device)
             loss = self.diffusion_model(image)
