@@ -30,3 +30,5 @@ class Client:
         w_local = self.model_trainer.get_model_params()
         return w_local
 
+    def get_sample_number(self):
+        return self.train_data_local_num

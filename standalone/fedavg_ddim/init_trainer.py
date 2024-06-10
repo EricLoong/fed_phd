@@ -139,8 +139,8 @@ class Trainer:
             self.diffusion_model.train()
             self.optimizer.zero_grad()
             image, _ = next(self.dataLoader)  # Ignore labels for training
-            print(f"DataLoader Output Type: {type(image)}")
-            print(f"DataLoader Output Shape: {image.shape}")
+            #print(f"DataLoader Output Type: {type(image)}")
+            #print(f"DataLoader Output Shape: {image.shape}")
             image = image.to(self.device)
             loss = self.diffusion_model(image)
             loss.backward()
