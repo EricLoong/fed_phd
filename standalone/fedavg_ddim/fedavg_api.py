@@ -29,7 +29,7 @@ class fedavg_api(object):
         self.logger.info("############setup_clients (START)#############")
         for client_idx in range(self.args.client_num_in_total):
             # Each client uses the shared model_trainer
-            c = Client(client_idx, train_data_local_num_dict[client_idx], self.args, self.device, self.model_trainer, self.logger, data_map_idx[client_idx])
+            c = Client(client_idx, train_data_local_num_dict[client_idx], self.args, self.device, self.model_trainer, self.logger, data_indices=data_map_idx[client_idx])
             self.client_list.append(c)
         self.logger.info("############setup_clients (END)#############")
 

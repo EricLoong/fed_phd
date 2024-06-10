@@ -138,7 +138,10 @@ class Trainer:
         for epoch in range(epochs):
             self.diffusion_model.train()
             self.optimizer.zero_grad()
-            image = next(self.dataLoader).to(self.device)
+            image = next(self.dataLoader)
+            print(f"DataLoader Output Type: {type(image)}")
+            print(f"DataLoader Output Shape: {image.shape}")
+            image = image.to(self.device)
             loss = self.diffusion_model(image)
             loss.backward()
             nn.utils.clip_grad_norm_(self.diffusion_model.parameters(), self.max_grad_norm)
