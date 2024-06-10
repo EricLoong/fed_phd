@@ -25,7 +25,7 @@ class Client:
     def train(self, w_global, round_idx):
         self.model_trainer.set_model_params(w_global)
         self.model_trainer.set_data_loader(self.dataLoader)  # Set the client's DataLoader in the Trainer
-        print(f"Client {self.client_idx} DataLoader Output Type: {type(next(iter(self.dataLoader)))}")
+        #print(f"Client {self.client_idx} DataLoader Output Type: {type(next(iter(self.dataLoader)))}")
         self.model_trainer.train(round_idx)
         w_local = self.model_trainer.get_model_params()
         return w_local
