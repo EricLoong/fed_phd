@@ -22,7 +22,7 @@ def cycle_with_label(dl):
     while True:
         for data in dl:
             img, label = data
-            yield img
+            yield img, label
 
 def cycle(dl):
     while True:
@@ -128,7 +128,7 @@ class Trainer:
         self.diffusion_model.load_state_dict(model_parameters)
 
     def set_data_loader(self, data_loader):
-        self.dataLoader = cycle(data_loader)
+        self.dataLoader = cycle_with_label(data_loader)  # Ensure dataLoader yields both images and labels
 
     def set_id(self, trainer_id):
         self.id = trainer_id
@@ -138,10 +138,8 @@ class Trainer:
         for epoch in range(epochs):
             self.diffusion_model.train()
             self.optimizer.zero_grad()
-            image = next(self.dataLoader)
+            image, _ = next(self.dataLoader)  # Ignore labels for training
             print(f"DataLoader Output Type: {type(image)}")
-            if isinstance(image, list):
-                image = torch.stack(image)  # Convert list of tensors to a single tensor
             print(f"DataLoader Output Shape: {image.shape}")
             image = image.to(self.device)
             loss = self.diffusion_model(image)
