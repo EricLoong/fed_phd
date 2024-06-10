@@ -3,7 +3,6 @@ import logging
 import os
 import pickle
 import random
-import pdb
 import numpy as np
 import torch
 from standalone.fedavg_ddim.init_trainer import Trainer
@@ -17,7 +16,7 @@ class fedavg_api(object):
         self.logger = logger
         self.device = device
         self.args = args
-        data_map_idx, train_data_local_num_dict  = dataset_info
+        data_map_idx, train_data_local_num_dict = dataset_info
         self.client_list = []
         self.train_data_local_num_dict = train_data_local_num_dict
         self.model_trainer = model_trainer
