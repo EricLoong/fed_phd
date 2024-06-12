@@ -1,13 +1,16 @@
 import math
-import torch
 import torch.nn as nn
 import numpy as np
-import os
 from pytorch_fid.fid_score import calculate_frechet_distance
 from pytorch_fid.inception import InceptionV3
 from torch.nn.functional import adaptive_avg_pool2d
 from tqdm import tqdm
+import os
+import torch
+from torch.utils.data import DataLoader
 from termcolor import colored
+from utils.data.dataset import dataset_wrapper
+from multiprocessing import cpu_count
 
 
 def num_to_groups(num, divisor):
@@ -125,3 +128,23 @@ class Config:
 
     def get_args(self):
         return self.args
+
+
+
+
+
+def setup_fid_scorer(args, image_size):
+    fid_batch_size = args.fid_estimate_batch_size
+    dataSet_fid = dataset_wrapper(
+        dataset=args.dataset,
+        data_dir=args.data_dir,
+        image_size=image_size,
+        augment_horizontal_flip=False,
+        info_color='magenta',
+        min1to1=False,
+        partial_data=False
+    )
+    num_workers = int(cpu_count() * args.cpu_percentage)
+    dataLoader_fid = DataLoader(dataSet_fid, batch_size=fid_batch_size, num_workers=num_workers, pin_memory=True)
+    fid_scorer = FID(fid_batch_size, dataLoader_fid, dataset_name=args.dataset, device=args.device, no_label=os.path.isdir(args.data_dir))
+    return fid_scorer

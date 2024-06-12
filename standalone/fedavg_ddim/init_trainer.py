@@ -9,12 +9,11 @@ import torchvision
 from torch.optim import Adam
 from torch.utils.tensorboard import SummaryWriter
 from torchvision.utils import save_image
-from multiprocessing import cpu_count
 from functools import partial
 from tqdm import tqdm
 import datetime
 from termcolor import colored
-from utils.centralized_src.tools import FID, num_to_groups
+from utils.centralized_src.tools import num_to_groups
 import numpy as np
 from torch.optim.lr_scheduler import LambdaLR
 
@@ -30,9 +29,9 @@ def cycle(dl):
             yield data
 
 class Trainer:
-    def __init__(self, diffusion_model, batch_size=32, lr=2e-5, ddim_samplers=None,
+    def __init__(self, diffusion_model, fid_scorer,batch_size=32, lr=2e-5, ddim_samplers=None,
                  num_samples=25, result_folder='./results', cpu_percentage=0,
-                 fid_estimate_batch_size=None, ddpm_fid_score_estimate_every=None, ddpm_num_fid_samples=None,
+                 ddpm_fid_score_estimate_every=None, ddpm_num_fid_samples=None,
                  max_grad_norm=1., logger=None, args=None, clip=True):
         """
         Trainer for Diffusion model.
@@ -55,7 +54,7 @@ class Trainer:
         self.clip = clip
         self.ddpm_fid_flag = True if ddpm_fid_score_estimate_every is not None else False
         self.ddpm_fid_score_estimate_every = ddpm_fid_score_estimate_every
-        self.cal_fid = True if self.ddpm_fid_flag else False
+        self.cal_fid = args.calculate_fid
         self.tqdm_sampler_name = None
         self.tensorboard_name = None
         self.writer = None
@@ -114,7 +113,7 @@ class Trainer:
             print(colored('No FID evaluation will be executed!\n'
                           'If you want FID evaluation consider using DDIM sampler.', 'magenta'))
         else:
-            self.fid_batch_size = fid_estimate_batch_size if fid_estimate_batch_size is not None else self.batch_size
+            self.fid_scorer = fid_scorer
 
     def print_model_param_sum(self, model, msg="Model parameter sum"):
         total_sum = sum(p.sum().item() for p in model.parameters())
@@ -179,7 +178,7 @@ class Trainer:
     def ddim_fid_calculation(self, current_step):
         with torch.no_grad():
             for sampler in self.ddim_samplers:
-                if sampler.calculate_fid and current_step % self.args.fid_freq == 0 and current_step != 0:
+                if sampler.calculate_fid and current_step % self.args.fid_freq == 0:
                     print(f"Calculating FID at step {current_step}")
                     sample_func = partial(sampler.sample, self.diffusion_model)
                     ddim_cur_fid, _ = self.fid_scorer.fid_score(sample_func, sampler.num_fid_sample)

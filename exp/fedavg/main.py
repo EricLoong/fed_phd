@@ -25,7 +25,7 @@ base_path = set_directory_to_fed_diff()
 
 from utils.centralized_src.model_original import Unet
 from utils.centralized_src.diffusion import GaussianDiffusion, DDIM_Sampler
-from utils.centralized_src.tools import Config
+from utils.centralized_src.tools import Config,setup_fid_scorer
 from utils.data.cifar10 import partition_data_indices_cifar10
 from standalone.fedavg_ddim.fedavg_api import fedavg_api
 from standalone.fedavg_ddim.init_trainer import Trainer
@@ -104,7 +104,7 @@ def add_args(parser):
     parser.add_argument('--num_samples', type=int, default=36, help='Number of samples to generate during training')
     parser.add_argument('--cpu_percentage', type=float, default=0.0,
                         help='Percentage of CPU cores to use for data loading')
-    parser.add_argument('--fid_estimate_batch_size', type=int, default=128, help='Batch size for FID estimation')
+    parser.add_argument('--fid_estimate_batch_size', type=int, default=256, help='Batch size for FID estimation')
     parser.add_argument('--clip', type=bool, default=True, help='Clip images during generation')
     parser.add_argument('--seed', type=int, default=2024, help='Random seed')
     parser.add_argument('--device', type=str, default='cuda' if torch.cuda.is_available() else 'cpu', help='Device to use for training')
@@ -142,16 +142,16 @@ def load_model(args):
     model = diffusion.to(args.device)
     return model
 
-def setup_trainer(args, diffusion_model, ddim_samplers,logger):
+def setup_trainer(args, diffusion_model, fid_scorer, ddim_samplers,logger):
     # Initialize the trainer with the provided arguments
     trainer = Trainer(args=args,logger=logger,
         diffusion_model=diffusion_model,
+        fid_scorer=fid_scorer,
         batch_size=args.batch_size,
         lr=args.lr,
         num_samples=args.num_samples,
         result_folder=args.results_dir,
         cpu_percentage=args.cpu_percentage,
-        fid_estimate_batch_size=args.fid_estimate_batch_size,
         ddim_samplers=ddim_samplers,
         clip=args.clip
     )
@@ -212,7 +212,8 @@ if __name__ == "__main__":
     # print(model)
     # pretrained_model_path = os.path.join(cur_dir, 'results', args.dataset, '20240404_005104fedavg-iid-mdlmedium-u-cm50000-total_clnt1-neighbor1-seed2023.pth')
     ddim_samplers = setup_ddim_sampler(args, diffusion_model) # Just one sampler in defalt
-    global_model_trainer = setup_trainer(args, diffusion_model, ddim_samplers=ddim_samplers,logger=logger)
+    fid_scorer = setup_fid_scorer(args,image_size=diffusion_model.image_size)
+    global_model_trainer = setup_trainer(args, diffusion_model, fid_scorer=fid_scorer, ddim_samplers=ddim_samplers,logger=logger)
     logger.info(diffusion_model)
 
     data_info = partition_data_indices_cifar10(datadir=args.data_dir, partition=args.partition_method, n_nets=args.client_num_in_total, n_cls=args.partition_alpha)
