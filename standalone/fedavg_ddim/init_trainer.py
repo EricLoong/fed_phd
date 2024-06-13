@@ -154,8 +154,8 @@ class Trainer:
 
                 epoch_loss += loss.item()  # Accumulate the loss
                 num_batches += 1
-                if batch_idx % 10 == 0:
-                    self.logger.info(f"Batch {batch_idx}: Loss {loss.item()}")
+                #if batch_idx % 10 == 0:
+                #    self.logger.info(f"Batch {batch_idx}: Loss {loss.item()}")
 
             # Calculate the average loss for the epoch
             average_loss = epoch_loss / num_batches
