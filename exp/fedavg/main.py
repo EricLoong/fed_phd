@@ -97,7 +97,7 @@ def add_args(parser):
     )
 
     parser.add_argument('--sampling_steps', type=int, default=100, help='Number of steps to sample from the diffusion model')
-    parser.add_argument('--sample_every', type=int, default=5000, help='Sample every n steps')
+    parser.add_argument('--sample_every', type=int, default=500, help='Sample every n steps')
     parser.add_argument('--calculate_fid', action='store_true', help='Calculate FID during training')
     parser.add_argument('--num_fid_sample', type=int, default=30000, help='Number of samples to use for FID calculation')
     parser.add_argument('--save', action='store_true', help='Save samples during training')
@@ -109,8 +109,8 @@ def add_args(parser):
     parser.add_argument('--seed', type=int, default=2024, help='Random seed')
     parser.add_argument('--device', type=str, default='cuda' if torch.cuda.is_available() else 'cpu', help='Device to use for training')
     parser.add_argument("--tqdm", action="store_true")
-    parser.add_argument('--warmup_steps', type=int, default=5000, help='Number of warmup steps for the scheduler;5000 for cifar10')
-    parser.add_argument('--fid_freq', type=int, default=10000, help='Frequency of FID calculation')
+    parser.add_argument('--warmup_steps', type=int, default=100, help='Number of warmup steps for the scheduler;5000 for cifar10')
+    parser.add_argument('--fid_freq', type=int, default=500, help='Frequency of FID calculation')
     parser.add_argument('--central_train', action='store_true', help='Train a centralized model')
     return parser
 
