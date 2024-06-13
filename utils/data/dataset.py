@@ -9,7 +9,7 @@ import os
 from glob import glob
 from PIL import Image
 import json
-from utils.data.cifar10 import CIFAR10,partition_data_indices_cifar10
+from utils.data.cifar10 import CIFAR10, partition_data_indices_cifar10
 
 ssl._create_default_https_context = ssl._create_unverified_context
 
