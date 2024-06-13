@@ -139,6 +139,8 @@ class Trainer:
             epoch_loss = 0  # Initialize variable to accumulate loss
             num_batches = 0  # To count the number of batches
 
+            self.logger.info(f"Starting epoch {epoch + 1}/{epochs}")
+
             for batch_idx, (image, _) in enumerate(self.dataLoader):  # Iterate through all batches
                 self.optimizer.zero_grad()
                 image = image.to(self.device)
@@ -151,12 +153,14 @@ class Trainer:
 
                 epoch_loss += loss.item()  # Accumulate the loss
                 num_batches += 1
+                if batch_idx % 10 == 0:
+                    self.logger.info(f"Batch {batch_idx}: Loss {loss.item()}")
 
             # Calculate the average loss for the epoch
             average_loss = epoch_loss / num_batches
 
-            if round_idx % self.args.sample_every == 0:
-                self.logger.info(f"Round {round_idx} Epoch {epoch} Average Loss: {average_loss}")
+            #if round_idx % self.args.sample_every == 0:
+            self.logger.info(f"Round {round_idx} Epoch {epoch} Average Loss: {average_loss}")
 
             if self.args.central_train:
                 self.ddim_image_generation(epoch)
