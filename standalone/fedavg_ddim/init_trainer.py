@@ -127,7 +127,8 @@ class Trainer:
         self.diffusion_model.load_state_dict(model_parameters)
 
     def set_data_loader(self, data_loader):
-        self.dataLoader = cycle_with_label(data_loader)  # Ensure dataLoader yields both images and labels
+        #self.dataLoader = cycle_with_label(data_loader)  # This procedure is for traditional centralized training. We don't need this for federated learning.
+        self.dataLoader = data_loader
 
     def set_id(self, trainer_id):
         self.id = trainer_id
