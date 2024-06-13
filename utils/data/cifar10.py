@@ -1,7 +1,6 @@
 import numpy as np
 from torchvision.datasets import CIFAR10
 
-
 def partition_data_indices_cifar10(datadir, partition, n_nets, n_cls):
     # Load CIFAR-10 dataset labels to determine partitions
     cifar10_train_ds = CIFAR10(datadir, train=True, download=True)
@@ -33,42 +32,18 @@ def partition_data_indices_cifar10(datadir, partition, n_nets, n_cls):
             for j in range(clients_per_class):
                 client_id = (i * clients_per_class + j) % n_nets
                 if client_id in net_dataidx_map:
-                    net_dataidx_map[client_id] = np.concatenate(
-                        (net_dataidx_map[client_id], cls_idx[j * split_size:(j + 1) * split_size]))
+                    net_dataidx_map[client_id] = np.concatenate((net_dataidx_map[client_id], cls_idx[j * split_size:(j + 1) * split_size]))
                 else:
                     net_dataidx_map[client_id] = cls_idx[j * split_size:(j + 1) * split_size]
                 local_number_data[client_id] = len(net_dataidx_map[client_id])
+                if i not in label_distribution[client_id]:
+                    label_distribution[client_id].append(i)
         # Shuffle data indices for each client to mix classes
         for client_id in net_dataidx_map:
             np.random.shuffle(net_dataidx_map[client_id])
-    elif partition == 'noniid-pathologicalp':
-        # Shuffle the classes and assign to each client
-        shuffled_classes = np.random.permutation(10)
-        client_classes = [shuffled_classes[i % 10] for i in range(n_nets * n_cls)]
-        client_classes = np.array(client_classes).reshape(n_nets, n_cls)
-
-        for client_id in range(n_nets):
-            for cls in client_classes[client_id]:
-                np.random.shuffle(class_indices[cls])
-                split_size = len(class_indices[cls]) // n_nets
-                if split_size == 0:
-                    continue
-
-                start_idx = client_id * split_size
-                end_idx = start_idx + split_size
-                if client_id in net_dataidx_map:
-                    net_dataidx_map[client_id] = np.concatenate(
-                        (net_dataidx_map[client_id], class_indices[cls][start_idx:end_idx]))
-                else:
-                    net_dataidx_map[client_id] = class_indices[cls][start_idx:end_idx]
-
-                local_number_data[client_id] = len(net_dataidx_map[client_id])
-                label_distribution[client_id].append(cls)
 
     # Print label distribution for each client
     for client_id, labels in label_distribution.items():
         print(f"Client {client_id}: {labels}")
 
     return net_dataidx_map, local_number_data, label_distribution
-
-
