@@ -20,7 +20,7 @@ class Client:
 
         # Initialize the dataset and data loader for the client
         self.dataSet = dataset_wrapper(self.args.dataset, data_dir=self.args.data_dir, image_size=self.model_trainer.image_size, partial_data=True, net_dataidx_map=self.data_indices)
-        self.dataLoader = DataLoader(self.dataSet, batch_size=self.args.batch_size, shuffle=True, num_workers=cpu_count())
+        self.dataLoader = DataLoader(self.dataSet, batch_size=self.args.batch_size, shuffle=True, num_workers=0)
 
     def train(self, w_global, round_idx):
         self.model_trainer.set_model_params(w_global)
