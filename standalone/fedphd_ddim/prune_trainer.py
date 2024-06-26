@@ -192,7 +192,7 @@ class Trainer:
     def ddim_fid_calculation(self, current_step):
         with torch.no_grad():
             for sampler in self.ddim_samplers:
-                if sampler.calculate_fid and current_step % self.args.fid_freq == 0 and current_step != 0:
+                if sampler.calculate_fid and (current_step+1) % self.args.fid_freq == 0:
                     print(f"Calculating FID at step {current_step}")
                     sample_func = partial(sampler.sample, self.diffusion_model)
                     ddim_cur_fid, _ = self.fid_scorer.fid_score(sample_func, sampler.num_fid_sample)
