@@ -72,7 +72,8 @@ class FID:
             print(colored('Computing Inception features for {} '
                           'samples from real dataset.'.format(len(self.dataLoader.dataset)), 'green'))
             for batch in tqdm(self.dataLoader, desc='Calculating stats for data distribution', leave=False):
-                real_samples = batch.to(self.device) if self.no_label else batch[0].to(self.device)
+                real_samples = batch.to(self.device) if isinstance(batch, torch.Tensor) else batch[0].to(self.device)
+
                 real_features = self.calculate_inception_features(real_samples)
                 stacked_real_features.append(real_features)
 
