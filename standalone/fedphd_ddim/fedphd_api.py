@@ -67,7 +67,7 @@ class fedphd_api(object):
                     client = self.client_list[cur_clnt]
                     self.logger.info('@@@@@@@@@@@@@@@@ Training Client CM({}) on Edge Server {}: {}'.format(round_idx, edge_server_idx, cur_clnt))
                     # Train client based on edge server model
-                    w_per = client.train(copy.deepcopy(self.edge_models[edge_server_idx]), round_idx)
+                    w_per = client.train(copy.deepcopy(self.edge_models[edge_server_idx][1]), round_idx)
                     w_locals[edge_server_idx].append((client.get_sample_number(), copy.deepcopy(w_per)))
 
             # Edge server aggregation
