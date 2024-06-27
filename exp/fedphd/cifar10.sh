@@ -10,4 +10,5 @@ python main.py --dataset 'cifar10' \
 --seed 2023 \
 --save \
 --calculate_fid \
+--num_edge_servers 1 \
 --tqdm
