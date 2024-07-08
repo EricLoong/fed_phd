@@ -47,7 +47,8 @@ class fedphd_api:
         self.logger.info("############setup_clients (START)#############")
         for client_idx in range(self.args.client_num_in_total):
             # Each client uses the shared model_trainer
-            c = Client(client_idx, train_data_local_num_dict[client_idx], self.args, self.device, self.model_trainer, self.logger, data_indices=data_map_idx[client_idx])
+            c = Client(client_idx, train_data_local_num_dict[client_idx], self.args, self.device, self.model_trainer,
+                       self.logger, data_indices=data_map_idx[client_idx], num_classes=self.num_classes)
             self.client_list.append(c)
         self.logger.info("############setup_clients (END)#############")
 
@@ -100,6 +101,10 @@ class fedphd_api:
                 w_global = self._aggregate(self.edge_models)
                 self.global_evaluation(w_global, round_idx)
                 torch.cuda.empty_cache()
+
+                # Update edge models with the global model
+                for i in range(self.args.num_edge_servers):
+                    self.edge_models[i] = (self.edge_models[i][0], copy.deepcopy(w_global))
 
         return w_global
 
