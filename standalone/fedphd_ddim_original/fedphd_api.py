@@ -11,8 +11,7 @@ from standalone.fedphd_ddim.client import Client
 from pathlib import Path
 import math
 
-
-class fedphd_api:
+class fedphd_api(object):
     def __init__(self, dataset_info, device, args, model_trainer, logger):
         self.logger = logger
         self.device = device
@@ -26,22 +25,7 @@ class fedphd_api:
         self.results_folder = Path('./results')
         self.best_fid = float('inf')
         self.edge_servers = self._setup_edge_servers()
-        self.edge_models = [(1, copy.deepcopy(self.model_trainer.get_model_params())) for _ in
-                            range(self.args.num_edge_servers)]
-        self.num_classes = self._get_num_classes(self.args.dataset)
-        self.server_distribution = self._init_uniform_distribution()
-        self.previous_server_distribution = self.server_distribution.copy()
-
-    def _get_num_classes(self, dataset_name):
-        dataset_classes = {
-            'cifar10': 10,
-            'mnist': 10,
-            # Add other datasets here as needed
-        }
-        return dataset_classes.get(dataset_name.lower(), 10)  # Default to 10 if not found
-
-    def _init_uniform_distribution(self):
-        return {y: 1 / self.num_classes for y in range(self.num_classes)}
+        self.edge_models = [(1, copy.deepcopy(self.model_trainer.get_model_params())) for _ in range(self.args.num_edge_servers)]
 
     def _setup_clients(self, train_data_local_num_dict, data_map_idx):
         self.logger.info("############setup_clients (START)#############")

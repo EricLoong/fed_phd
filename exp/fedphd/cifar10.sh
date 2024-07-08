@@ -10,5 +10,6 @@ python main.py --dataset 'cifar10' \
 --seed 2023 \
 --save \
 --calculate_fid \
+--aggr_freq 1 \
 --num_edge_servers 2 \
 --tqdm
