@@ -21,6 +21,9 @@ class fedphd_api:
         self.client_list = []
         self.train_data_local_num_dict = train_data_local_num_dict
         self.model_trainer = model_trainer
+        self.num_classes = self._get_num_classes(self.args.dataset)
+        self.server_distribution = self._init_uniform_distribution()
+        self.previous_server_distribution = self.server_distribution.copy()
         self._setup_clients(train_data_local_num_dict, data_map_idx)
         self.init_stat_info()
         self.results_folder = Path('./results')
@@ -28,9 +31,7 @@ class fedphd_api:
         self.edge_servers = self._setup_edge_servers()
         self.edge_models = [(1, copy.deepcopy(self.model_trainer.get_model_params())) for _ in
                             range(self.args.num_edge_servers)]
-        self.num_classes = self._get_num_classes(self.args.dataset)
-        self.server_distribution = self._init_uniform_distribution()
-        self.previous_server_distribution = self.server_distribution.copy()
+
 
     def _get_num_classes(self, dataset_name):
         dataset_classes = {
