@@ -186,6 +186,7 @@ if __name__ == "__main__":
     )
     args.identity += "-neighbor" + str(args.client_num_per_round)
     args.identity += "-seed" + str(args.seed)
+    args.identity += '-balance_agg' + str(args.balance_agg_a)
 
     cur_dir = os.path.abspath(__file__).rsplit("/", 1)[0]
     log_path = os.path.join(
