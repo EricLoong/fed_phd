@@ -32,7 +32,6 @@ class fedphd_api:
         self.edge_models = [(1, copy.deepcopy(self.model_trainer.get_model_params())) for _ in
                             range(self.args.num_edge_servers)]
 
-
     def _get_num_classes(self, dataset_name):
         dataset_classes = {
             'cifar10': 10,
@@ -63,7 +62,6 @@ class fedphd_api:
             edge_distribution.append(self.server_distribution.copy())
         return edge_distribution
 
-
     def train(self):
         w_global = self.model_trainer.get_model_params()
         if not self.args.tqdm:
@@ -78,7 +76,8 @@ class fedphd_api:
         for round_idx in comm_round_iterable:
             self.logger.info("################Communication round : {}".format(round_idx))
             w_locals = [[] for _ in range(self.args.num_edge_servers)]
-            client_indexes = self._client_sampling(round_idx, self.args.client_num_in_total, self.args.client_num_per_round)
+            client_indexes = self._client_sampling(round_idx, self.args.client_num_in_total,
+                                                   self.args.client_num_per_round)
             client_indexes = np.sort(client_indexes)
 
             self.logger.info("client_indexes = " + str(client_indexes))
@@ -94,15 +93,18 @@ class fedphd_api:
             # Client select the edge server according to the statistic homogeneity score
             for client_idx in client_indexes:
                 client = self.client_list[client_idx]
-                edge_server_idx = client.select_best_edge_server(edge_server_distributions=copy.deepcopy(edge_server_distributions),
-                                                                  edge_samples=edge_samples,target_distribution=self.server_distribution)
+                edge_server_idx = client.select_best_edge_server(
+                    edge_distributions=copy.deepcopy(edge_server_distributions),
+                    current_samples=edge_samples, target_distribution=self.server_distribution)
                 edge_server_clients[edge_server_idx].append(client_idx)
                 self.logger.info('Client {} is assigned to Edge Server {}'.format(client_idx, edge_server_idx))
 
             for edge_server_idx, clients in enumerate(edge_server_clients):
                 for cur_clnt in clients:
                     client = self.client_list[cur_clnt]
-                    self.logger.info('@@@@@@@@@@@@@@@@ Training Client CM({}) on Edge Server {}: {}'.format(round_idx, edge_server_idx, cur_clnt))
+                    self.logger.info('@@@@@@@@@@@@@@@@ Training Client CM({}) on Edge Server {}: {}'.format(round_idx,
+                                                                                                            edge_server_idx,
+                                                                                                            cur_clnt))
                     # Train client based on edge server model
                     w_per = client.train(copy.deepcopy(self.edge_models[edge_server_idx][1]), round_idx)
                     w_locals[edge_server_idx].append((client.get_sample_number(), copy.deepcopy(w_per)))
@@ -115,12 +117,10 @@ class fedphd_api:
                     )
                     edge_samples[edge_server_idx] += client.get_sample_number()
 
-
             # Edge server aggregation
             for edge_idx, edge_server in enumerate(w_locals):
                 edge_sever_num_samples_temp = sum([w[0] for w in edge_server])
-                self.edge_models[edge_idx] = (edge_sever_num_samples_temp,self._aggregate(edge_server))
-
+                self.edge_models[edge_idx] = (edge_sever_num_samples_temp, self._aggregate(edge_server))
 
             # Central server aggregation every 5 rounds
             if (round_idx + 1) % self.args.aggr_freq == 0:
@@ -193,7 +193,8 @@ class fedphd_api:
         training_num = sum(sample_num for sample_num, _ in w_locals)
         w_global = {}
         for k in w_locals[0][1].keys():
-            w_global[k] = sum(local_model_params[k] * (sample_num / training_num) for sample_num, local_model_params in w_locals)
+            w_global[k] = sum(
+                local_model_params[k] * (sample_num / training_num) for sample_num, local_model_params in w_locals)
         return w_global
 
     def init_stat_info(self):
