@@ -57,6 +57,13 @@ class fedphd_api:
         edge_servers = [[] for _ in range(self.args.num_edge_servers)]
         return edge_servers
 
+    def _init_edge_server_distribution(self):
+        edge_distribution = []
+        for i in range(self.args.num_edge_servers):
+            edge_distribution.append(self.server_distribution.copy())
+        return edge_distribution
+
+
     def train(self):
         w_global = self.model_trainer.get_model_params()
         if not self.args.tqdm:
@@ -64,6 +71,9 @@ class fedphd_api:
         else:
             from tqdm import tqdm
             comm_round_iterable = tqdm(range(self.args.comm_round), desc="Comm. Rounds", ncols=100)
+
+        edge_server_distributions = self._init_edge_server_distribution()
+        edge_samples = [0 for _ in range(self.args.num_edge_servers)]
 
         for round_idx in comm_round_iterable:
             self.logger.info("################Communication round : {}".format(round_idx))
@@ -73,12 +83,21 @@ class fedphd_api:
 
             self.logger.info("client_indexes = " + str(client_indexes))
 
-            # Distribute clients to edge servers
-            num_clients_per_edge_server = len(client_indexes) // self.args.num_edge_servers
+            # Set the edge server set for each round
             edge_server_clients = [[] for _ in range(self.args.num_edge_servers)]
-            for i, cur_clnt in enumerate(client_indexes):
-                edge_server_idx = i % self.args.num_edge_servers
-                edge_server_clients[edge_server_idx].append(cur_clnt)
+
+            # Reset the edge server distribution after central server aggregation
+            if (round_idx + 1) % self.args.aggr_freq == 0:
+                edge_server_distribution = self._init_edge_server_distribution()
+                edge_samples = [0 for _ in range(self.args.num_edge_servers)]
+
+            # Client select the edge server according to the statistic homogeneity score
+            for client_idx in client_indexes:
+                client = self.client_list[client_idx]
+                edge_server_idx = client.select_best_edge_server(edge_server_distributions=copy.deepcopy(edge_server_distributions),
+                                                                  edge_samples=edge_samples,target_distribution=self.server_distribution)
+                edge_server_clients[edge_server_idx].append(client_idx)
+                self.logger.info('Client {} is assigned to Edge Server {}'.format(client_idx, edge_server_idx))
 
             for edge_server_idx, clients in enumerate(edge_server_clients):
                 for cur_clnt in clients:
@@ -88,13 +107,20 @@ class fedphd_api:
                     w_per = client.train(copy.deepcopy(self.edge_models[edge_server_idx][1]), round_idx)
                     w_locals[edge_server_idx].append((client.get_sample_number(), copy.deepcopy(w_per)))
 
+                    # Update client distribution on the selected edge server
+                    edge_server_distributions[edge_server_idx] = self._update_edge_distribution(
+                        edge_distribution=copy.deepcopy(edge_server_distributions[edge_server_idx]),
+                        client_distribution=client.label_distribution,
+                        current_samples=edge_samples[edge_server_idx], new_samples=client.get_sample_number()
+                    )
+                    edge_samples[edge_server_idx] += client.get_sample_number()
+
+
             # Edge server aggregation
             for edge_idx, edge_server in enumerate(w_locals):
                 edge_sever_num_samples_temp = sum([w[0] for w in edge_server])
-                if len(edge_server) > 1:
-                    self.edge_models[edge_idx] = (edge_sever_num_samples_temp,self._aggregate(edge_server))
-                else:
-                    self.logger.warning(f"Edge server {edge_idx} received insufficient client updates.")
+                self.edge_models[edge_idx] = (edge_sever_num_samples_temp,self._aggregate(edge_server))
+
 
             # Central server aggregation every 5 rounds
             if (round_idx + 1) % self.args.aggr_freq == 0:
@@ -154,6 +180,14 @@ class fedphd_api:
             client_indexes = np.random.choice(range(client_num_in_total), num_clients, replace=False)
         self.logger.info("client_indexes = %s" % str(client_indexes))
         return client_indexes
+
+    def _update_edge_distribution(self, edge_distribution, client_distribution, current_samples, new_samples):
+        total_samples = current_samples + new_samples
+        for label, prob in client_distribution.items():
+            edge_distribution[label] = (edge_distribution[label] * current_samples + prob * new_samples) / total_samples
+            # edge_distribution[label] * current_samples is the sum of samples of this label before adding the client
+            # prob * new_samples is the number of samples of this label in the new client
+        return edge_distribution
 
     def _aggregate(self, w_locals):
         training_num = sum(sample_num for sample_num, _ in w_locals)

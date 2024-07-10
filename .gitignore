@@ -7,3 +7,4 @@
 *.pt
 *.log
 *.pyc
+/results_visualization
