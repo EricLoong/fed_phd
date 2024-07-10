@@ -121,6 +121,7 @@ class fedphd_api:
             # Edge server aggregation
             for edge_idx, edge_server in enumerate(w_locals):
                 edge_sever_num_samples_temp = sum([w[0] for w in edge_server])
+                self.logger.info('Edge Server {} has attached {} samples at round {}'.format(edge_idx, edge_sever_num_samples_temp,round_idx))
                 # Avoid empty edge server
                 if edge_sever_num_samples_temp > 0:
                     self.edge_models[edge_idx] = (edge_sever_num_samples_temp, self._aggregate(edge_server))

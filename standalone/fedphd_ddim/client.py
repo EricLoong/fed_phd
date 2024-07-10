@@ -65,7 +65,11 @@ class Client:
         scores = np.array(score_list)
         current_samples = np.array(current_samples)
         relu = np.maximum(scores * 10000 - current_samples+b, 0)
-        self.logger.info(f"Client {self.client_idx} ReLU values: {relu}")
+        self.logger.info(f"Client {self.client_idx} scores: {scores}")
+        self.logger.info(f"Client {self.client_idx} current samples: {current_samples}")
+        # Add epsilon to ensure non-zero probabilities and normalize
+        epsilon = 1e-8
+        relu += epsilon
         probabilities = relu / np.sum(relu)
 
         self.logger.info(f"Client {self.client_idx} probabilities: {probabilities}")
