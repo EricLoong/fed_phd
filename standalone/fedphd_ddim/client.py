@@ -60,10 +60,12 @@ class Client:
             score = self.calculate_homogeneity_score(merged_distribution, target_distribution)
             score_list.append(score)
 
+        self.logger.info(f"Client {self.client_idx} scores: {score_list}")
         max_score = max(score_list)
         best_edge_indices = [idx for idx, score in enumerate(score_list) if score == max_score]
 
         best_edge_server_idx = random.choice(best_edge_indices)
+        self.logger.info(f"Client {self.client_idx} selects edge server {best_edge_server_idx} with score {max_score}")
         return best_edge_server_idx
 
     def _merge_edge_distribution(self, edge_distribution, current_samples):
