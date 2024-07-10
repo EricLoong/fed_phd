@@ -50,7 +50,7 @@ class Client:
         difference = sum(abs(target_distribution[y] - merged_distribution[y]) ** 2 for y in merged_distribution.keys())
         return 2 - math.sqrt(difference)
 
-    def _select_best_edge_server(self, edge_distributions, current_samples, target_distribution):
+    def select_best_edge_server(self, edge_distributions, current_samples, target_distribution):
         score_list = []
         merged_distributions = []
         for i in range(len(edge_distributions)):
