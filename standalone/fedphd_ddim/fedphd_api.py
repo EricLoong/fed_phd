@@ -70,6 +70,7 @@ class fedphd_api:
             from tqdm import tqdm
             comm_round_iterable = tqdm(range(self.args.comm_round), desc="Comm. Rounds", ncols=100)
 
+        # Initialize edge server distribution
         edge_server_distributions = self._init_edge_server_distribution()
         edge_samples = [0 for _ in range(self.args.num_edge_servers)]
 
@@ -86,9 +87,6 @@ class fedphd_api:
             edge_server_clients = [[] for _ in range(self.args.num_edge_servers)]
 
             # Reset the edge server distribution after central server aggregation
-            if (round_idx + 1) % self.args.aggr_freq == 0:
-                edge_server_distribution = self._init_edge_server_distribution()
-                edge_samples = [0 for _ in range(self.args.num_edge_servers)]
 
             # Client select the edge server according to the statistic homogeneity score
             for client_idx in client_indexes:
@@ -127,16 +125,19 @@ class fedphd_api:
                     self.edge_models[edge_idx] = (edge_sever_num_samples_temp, self._aggregate(edge_server))
 
             # Central server aggregation every 5 rounds
-            if (round_idx + 1) % self.args.aggr_freq == 0:
+            if (round_idx+1)  % self.args.aggr_freq == 0:
                 self.logger.info("########## Aggregating at central server ##########")
                 w_global = self._aggregate_server(w_locals=self.edge_models, target_distribution=self.server_distribution,
                                                   edge_distributions=edge_server_distributions)
                 self.global_evaluation(w_global, round_idx)
-                torch.cuda.empty_cache()
 
+                # Reset edge server distribution
+                edge_server_distributions = self._init_edge_server_distribution()
+                edge_samples = [0 for _ in range(self.args.num_edge_servers)]
                 # Update edge models with the global model
                 for i in range(self.args.num_edge_servers):
                     self.edge_models[i] = (self.edge_models[i][0], copy.deepcopy(w_global))
+                torch.cuda.empty_cache()
 
         return w_global
 
