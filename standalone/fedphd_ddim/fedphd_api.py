@@ -128,7 +128,8 @@ class fedphd_api:
             # Central server aggregation every 5 rounds
             if (round_idx + 1) % self.args.aggr_freq == 0:
                 self.logger.info("########## Aggregating at central server ##########")
-                w_global = self._aggregate_server(self.edge_models)
+                w_global = self._aggregate_server(w_locals=self.edge_models, target_distribution=self.server_distribution,
+                                                  edge_distributions=edge_server_distributions)
                 self.global_evaluation(w_global, round_idx)
                 torch.cuda.empty_cache()
 
