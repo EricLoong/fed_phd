@@ -3,7 +3,7 @@ from torch.utils.data import DataLoader
 from utils.data.dataset import dataset_wrapper
 from multiprocessing import cpu_count
 import math
-import random
+import numpy as np
 
 def cycle(dl):
     while True:
@@ -60,12 +60,18 @@ class Client:
             score = self.calculate_homogeneity_score(merged_distribution, target_distribution)
             score_list.append(score)
 
-        self.logger.info(f"Client {self.client_idx} scores: {score_list}")
-        max_score = max(score_list)
-        best_edge_indices = [idx for idx, score in enumerate(score_list) if score == max_score]
+        # Calculate probabilities
+        b = 0
+        scores = np.array(score_list)
+        current_samples = np.array(current_samples)
+        relu = np.maximum(scores * self.get_sample_number() - current_samples+b, 0)
+        probabilities = relu / np.sum(relu)
 
-        best_edge_server_idx = random.choice(best_edge_indices)
-        self.logger.info(f"Client {self.client_idx} selects edge server {best_edge_server_idx} with score {max_score}")
+        self.logger.info(f"Client {self.client_idx} probabilities: {probabilities}")
+
+        # Select edge server based on probabilities
+        best_edge_server_idx = np.random.choice(len(edge_distributions), p=probabilities)
+        self.logger.info(f"Client {self.client_idx} selects edge server {best_edge_server_idx} with probability {probabilities[best_edge_server_idx]}")
         return best_edge_server_idx
 
     def _merge_edge_distribution(self, edge_distribution, current_samples):

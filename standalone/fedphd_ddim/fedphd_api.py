@@ -190,12 +190,51 @@ class fedphd_api:
         return edge_distribution
 
     def _aggregate(self, w_locals):
+        if not w_locals:  # Check if the list is empty
+            return {}
         training_num = sum(sample_num for sample_num, _ in w_locals)
+        if training_num == 0:
+            return {}
         w_global = {}
         for k in w_locals[0][1].keys():
             w_global[k] = sum(
                 local_model_params[k] * (sample_num / training_num) for sample_num, local_model_params in w_locals)
         return w_global
+
+    def _aggregate_server(self, w_locals, edge_distributions, target_distribution):
+        a = self.args.balance_agg_a
+        b = self.args.balance_agg_b
+        if not w_locals:  # Check if the list is empty
+            return {}
+        training_num = sum(sample_num for sample_num, _ in w_locals)
+        if training_num == 0:
+            return {}
+        # Calculate homogeneity scores for each edge distribution
+        scores_homo = []
+        for edge_distribution in edge_distributions:
+            score_homo = self.calculate_homogeneity_score(edge_distribution, target_distribution)
+            scores_homo.append(score_homo)
+
+        # Compute weights using the ReLU function
+        weights = []
+        for i, (num_samples, _) in enumerate(w_locals):
+            relu_value = max(num_samples + a * scores_homo[i] + b, 0)
+            weights.append(relu_value)
+
+        # Normalize weights
+        total_weight = sum(weights)
+        normalized_weights = [w / total_weight for w in weights]
+
+        # Aggregate the global model parameters using the normalized weights
+        w_global = {}
+        for k in w_locals[0][1].keys():
+            w_global[k] = sum(normalized_weights[i] * w_locals[i][1][k] for i in range(len(w_locals)))
+
+        return w_global
+
+    def calculate_homogeneity_score(self, merged_distribution, target_distribution):
+        difference = sum(abs(target_distribution[y] - merged_distribution[y]) ** 2 for y in merged_distribution.keys())
+        return 2 - math.sqrt(difference)
 
     def init_stat_info(self):
         self.stat_info = {}

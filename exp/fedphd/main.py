@@ -116,6 +116,8 @@ def add_args(parser):
     #### Arguments for FedPhD
     parser.add_argument('--num_edge_servers', type=int, default=2, help='Number of edge servers')
     parser.add_argument('--aggr_freq', type=int, default=5, help='Frequency of aggregation')
+    parser.add_argument('--balance_agg_a', type=float, default=5000, help='Balance parameter for aggregation')
+    parser.add_argument('--balance_agg_b', type=float, default=0, help='Balance parameter for aggregation')
     return parser
 
 

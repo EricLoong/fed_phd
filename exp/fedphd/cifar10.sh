@@ -11,5 +11,6 @@ python main.py --dataset 'cifar10' \
 --save \
 --calculate_fid \
 --aggr_freq 5 \
+--balance_agg_a 0 \
 --num_edge_servers 2 \
 --tqdm
