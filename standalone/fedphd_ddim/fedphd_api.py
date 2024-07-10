@@ -99,6 +99,7 @@ class fedphd_api:
                 edge_server_clients[edge_server_idx].append(client_idx)
                 self.logger.info('Client {} is assigned to Edge Server {}'.format(client_idx, edge_server_idx))
 
+            temp_edge_models = copy.deepcopy(self.edge_models)
             for edge_server_idx, clients in enumerate(edge_server_clients):
                 for cur_clnt in clients:
                     client = self.client_list[cur_clnt]
@@ -106,7 +107,7 @@ class fedphd_api:
                                                                                                             edge_server_idx,
                                                                                                             cur_clnt))
                     # Train client based on edge server model
-                    w_per = client.train(copy.deepcopy(self.edge_models[edge_server_idx][1]), round_idx)
+                    w_per = client.train(copy.deepcopy(temp_edge_models[edge_server_idx][1]), round_idx)
                     w_locals[edge_server_idx].append((client.get_sample_number(), copy.deepcopy(w_per)))
 
                     # Update client distribution on the selected edge server
@@ -120,12 +121,14 @@ class fedphd_api:
             # Edge server aggregation
             for edge_idx, edge_server in enumerate(w_locals):
                 edge_sever_num_samples_temp = sum([w[0] for w in edge_server])
-                self.edge_models[edge_idx] = (edge_sever_num_samples_temp, self._aggregate(edge_server))
+                # Avoid empty edge server
+                if edge_sever_num_samples_temp > 0:
+                    self.edge_models[edge_idx] = (edge_sever_num_samples_temp, self._aggregate(edge_server))
 
             # Central server aggregation every 5 rounds
             if (round_idx + 1) % self.args.aggr_freq == 0:
                 self.logger.info("########## Aggregating at central server ##########")
-                w_global = self._aggregate(self.edge_models)
+                w_global = self._aggregate_server(self.edge_models)
                 self.global_evaluation(w_global, round_idx)
                 torch.cuda.empty_cache()
 
@@ -190,8 +193,6 @@ class fedphd_api:
         return edge_distribution
 
     def _aggregate(self, w_locals):
-        if not w_locals:  # Check if the list is empty
-            return {}
         training_num = sum(sample_num for sample_num, _ in w_locals)
         if training_num == 0:
             return {}
