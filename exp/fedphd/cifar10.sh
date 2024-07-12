@@ -6,11 +6,11 @@ python main.py --dataset 'cifar10' \
 --epochs 1 \
 --client_num_in_total 20 --frac 0.2 \
 --sample_every 500 \
---comm_round 20000 \
+--comm_round 10000 \
 --seed 2023 \
 --save \
 --calculate_fid \
 --aggr_freq 5 \
---balance_agg_a 10000 \
+--balance_agg_a 5000 \
 --num_edge_servers 2 \
 --tqdm

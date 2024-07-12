@@ -185,8 +185,9 @@ if __name__ == "__main__":
         "-cm" + str(args.comm_round) + "-total_clnt" + str(args.client_num_in_total)
     )
     args.identity += "-neighbor" + str(args.client_num_per_round)
-    args.identity += "-seed" + str(args.seed)
     args.identity += '-balance_agg' + str(args.balance_agg_a)
+    args.identity += "-seed" + str(args.seed)
+
 
     cur_dir = os.path.abspath(__file__).rsplit("/", 1)[0]
     log_path = os.path.join(
