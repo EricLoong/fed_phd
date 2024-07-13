@@ -65,18 +65,18 @@ class Client:
         scores = np.array(score_list)
         current_samples = np.array(current_samples)
         relu = np.maximum(scores * 10000 - current_samples+b, 0)
-        self.logger.info(f"Client {self.client_idx} scores: {scores}")
-        self.logger.info(f"Client {self.client_idx} current samples: {current_samples}")
+        #self.logger.info(f"Client {self.client_idx} scores: {scores}")
+        #self.logger.info(f"Client {self.client_idx} current samples: {current_samples}")
         # Add epsilon to ensure non-zero probabilities and normalize
         epsilon = 1e-8
         relu += epsilon
         probabilities = relu / np.sum(relu)
 
-        self.logger.info(f"Client {self.client_idx} probabilities: {probabilities}")
+        #self.logger.info(f"Client {self.client_idx} probabilities: {probabilities}")
 
         # Select edge server based on probabilities
         best_edge_server_idx = np.random.choice(len(edge_distributions), p=probabilities)
-        self.logger.info(f"Client {self.client_idx} selects edge server {best_edge_server_idx} with probability {probabilities[best_edge_server_idx]}")
+        #self.logger.info(f"Client {self.client_idx} selects edge server {best_edge_server_idx} with probability {probabilities[best_edge_server_idx]}")
         return best_edge_server_idx
 
     def _merge_edge_distribution(self, edge_distribution, current_samples):
