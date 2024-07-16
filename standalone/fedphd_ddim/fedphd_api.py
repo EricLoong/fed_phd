@@ -144,8 +144,8 @@ class fedphd_api:
     def global_evaluation(self, w_global, round_idx):
         # Load global model weights for testing and inference
         self.model_trainer.set_model_params(copy.deepcopy(w_global))
-        self.model_trainer.ddim_fid_calculation(round_idx)
         self.model_trainer.ddim_inception_calculation(round_idx)
+        self.model_trainer.ddim_fid_calculation(round_idx)
         self.model_trainer.ddim_image_generation(round_idx)
 
     def _check_sampler(self, before=False):

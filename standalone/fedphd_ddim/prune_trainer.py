@@ -214,7 +214,7 @@ class Trainer:
     def ddim_inception_calculation(self, current_step):
         with torch.no_grad():
             for sampler in self.ddim_samplers:
-                if sampler.calculate_inception and (current_step+1) % self.args.fid_freq == 0:
+                if sampler.calculate_inception and (current_step) % self.args.fid_freq == 0:
                     # Calculate the Inception Score at the same time of FID calculation
                     print(f"Calculating Inception Score at step {current_step}")
                     ddim_cur_inception_mean, ddim_cur_inception_std = self.inception_scorer.inception_score(sampler.num_inception_sample)
