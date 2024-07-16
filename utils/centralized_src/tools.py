@@ -11,6 +11,7 @@ from torch.utils.data import DataLoader
 from termcolor import colored
 from utils.data.dataset import dataset_wrapper
 from multiprocessing import cpu_count
+from scipy.stats import entropy
 
 
 def num_to_groups(num, divisor):
@@ -105,6 +106,43 @@ class FID:
         return calculate_frechet_distance(m1, s1, self.m2, self.s2), generated_samples_return
 
 
+class InceptionScore:
+    def __init__(self, batch_size, dataLoader, device='cuda', inception_block_idx=3):
+        assert inception_block_idx in [0, 1, 2, 3], 'inception_block_idx must be either 0, 1, 2, 3'
+        self.batch_size = batch_size
+        self.dataLoader = dataLoader
+        self.device = device
+        self.inception = InceptionV3([inception_block_idx]).to(device)
+
+    def calculate_inception_features(self, samples):
+        self.inception.eval()
+        features = self.inception(samples)[0]
+        if features.size(2) != 1 or features.size(3) != 1:
+            features = adaptive_avg_pool2d(features, output_size=(1, 1))
+        return features.squeeze()
+
+    def inception_score(self, num_samples, splits=10):
+        self.inception.eval()
+        preds = []
+
+        for batch in tqdm(self.dataLoader, desc='Calculating Inception Score'):
+            samples = batch.to(self.device) if isinstance(batch, torch.Tensor) else batch[0].to(self.device)
+            features = self.calculate_inception_features(samples)
+            preds.append(features.detach().cpu().numpy())
+
+        preds = np.concatenate(preds, axis=0)
+        scores = []
+        N = preds.shape[0]
+        split_size = N // splits
+
+        for k in range(splits):
+            part = preds[k * split_size: (k + 1) * split_size, :]
+            py = np.mean(part, axis=0)
+            scores.append(np.exp(np.mean([entropy(part[i], py) for i in range(part.shape[0])])))
+
+        return np.mean(scores), np.std(scores)
+
+
 def make_notification(content, color, boundary='-'):
     notice = boundary * 30 + '\n'
     side = boundary if boundary != '-' else '|'
@@ -133,7 +171,6 @@ class Config:
 
 
 
-
 def setup_fid_scorer(args, image_size):
     fid_batch_size = args.fid_estimate_batch_size
     dataSet_fid = dataset_wrapper(
@@ -149,3 +186,19 @@ def setup_fid_scorer(args, image_size):
     dataLoader_fid = DataLoader(dataSet_fid, batch_size=fid_batch_size, num_workers=num_workers, pin_memory=True)
     fid_scorer = FID(fid_batch_size, dataLoader_fid, dataset_name=args.dataset, device=args.device, no_label=os.path.isdir(args.data_dir))
     return fid_scorer
+
+def setup_inception_scorer(args, image_size):
+    batch_size = args.inception_batch_size
+    dataset = dataset_wrapper(
+        dataset=args.dataset,
+        data_dir=args.data_dir,
+        image_size=image_size,
+        augment_horizontal_flip=False,
+        info_color='magenta',
+        min1to1=False,
+        partial_data=False
+    )
+    num_workers = int(cpu_count() * args.cpu_percentage)
+    dataLoader = DataLoader(dataset, batch_size=batch_size, num_workers=num_workers, pin_memory=True)
+    inception_scorer = InceptionScore(batch_size, dataLoader, device=args.device)
+    return inception_scorer

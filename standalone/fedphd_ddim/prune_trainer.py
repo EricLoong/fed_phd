@@ -29,7 +29,7 @@ def cycle(dl):
             yield data
 
 class Trainer:
-    def __init__(self, diffusion_model, fid_scorer,batch_size=32, lr=2e-5, ddim_samplers=None,
+    def __init__(self, diffusion_model, fid_scorer, inception_scorer,batch_size=32, lr=2e-5, ddim_samplers=None,
                  num_samples=25, result_folder='./results', cpu_percentage=0,
                  ddpm_fid_score_estimate_every=None, ddpm_num_fid_samples=None,
                  max_grad_norm=1., logger=None, args=None, clip=True):
@@ -53,13 +53,16 @@ class Trainer:
         self.device = self.diffusion_model.device
         self.clip = clip
         self.ddpm_fid_flag = True if ddpm_fid_score_estimate_every is not None else False
+        self.ddpm_is_flag = True if ddpm_fid_score_estimate_every is not None else False
+        # IS compuation is followed by FID computation
         self.ddpm_fid_score_estimate_every = ddpm_fid_score_estimate_every
         self.cal_fid = args.calculate_fid
+        self.cal_is = args.calculate_is
         self.tqdm_sampler_name = None
         self.tensorboard_name = None
         self.writer = None
         self.global_step = 0
-        self.fid_score_log = dict()
+        #self.fid_score_log = dict()
         assert clip in [True, False, 'both'], "clip must be one of [True, False, 'both']"
         if clip is True or clip == 'both':
             os.makedirs(os.path.join(self.ddpm_result_folder, 'clip'), exist_ok=True)
@@ -95,7 +98,7 @@ class Trainer:
                 if self.tqdm_sampler_name is None:
                     self.tqdm_sampler_name = sampler.sampler_name
                 sampler.num_fid_sample = sampler.num_fid_sample if sampler.num_fid_sample is not None else 0
-                self.fid_score_log[sampler.sampler_name] = list()
+                #self.fid_score_log[sampler.sampler_name] = list()
             if sampler.fixed_noise:
                 sampler.register_buffer('noise', torch.randn([self.num_samples, sampler.channel,
                                                               sampler.image_size, sampler.image_size]))
@@ -114,6 +117,12 @@ class Trainer:
                           'If you want FID evaluation consider using DDIM sampler.', 'magenta'))
         else:
             self.fid_scorer = fid_scorer
+
+        if not self.cal_is:
+            print(colored('No IS evaluation will be executed!\n'
+                          'If you want IS evaluation consider using DDIM sampler.', 'magenta'))
+        else:
+            self.inception_scorer = inception_scorer
 
     def print_model_param_sum(self, model, msg="Model parameter sum"):
         total_sum = sum(p.sum().item() for p in model.parameters())
@@ -201,6 +210,17 @@ class Trainer:
                         sampler.best_fid[0] = ddim_cur_fid
                         if sampler.save:
                             self.save_model(current_step, sampler.sampler_name, ddim_cur_fid)
+
+    def ddim_inception_calculation(self, current_step):
+        with torch.no_grad():
+            for sampler in self.ddim_samplers:
+                if sampler.calculate_inception and (current_step+1) % self.args.fid_freq == 0:
+                    # Calculate the Inception Score at the same time of FID calculation
+                    print(f"Calculating Inception Score at step {current_step}")
+                    ddim_cur_inception_mean, ddim_cur_inception_std = self.inception_scorer.inception_score(sampler.num_inception_sample)
+                    self.logger.info(f"Inception Score using {sampler.sampler_name} at step {current_step}: Mean {ddim_cur_inception_mean}, Std {ddim_cur_inception_std}")
+                    #if sampler.save:
+                    #    self.save_model(current_step, sampler.sampler_name, ddim_cur_inception_mean)
 
     def save_model(self, step, sampler_name, fid_score):
         # Construct a filename that includes the step, sampler name, and FID score

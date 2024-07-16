@@ -25,7 +25,7 @@ base_path = set_directory_to_fed_diff()
 
 from utils.centralized_src.model_original import Unet
 from utils.centralized_src.diffusion import GaussianDiffusion, DDIM_Sampler
-from utils.centralized_src.tools import Config,setup_fid_scorer
+from utils.centralized_src.tools import Config,setup_fid_scorer,setup_inception_scorer
 from utils.data.cifar10 import partition_data_indices_cifar10
 from standalone.fedphd_ddim.fedphd_api import fedphd_api
 from standalone.fedphd_ddim.prune_trainer import Trainer
@@ -99,6 +99,7 @@ def add_args(parser):
     parser.add_argument('--sampling_steps', type=int, default=100, help='Number of steps to sample from the diffusion model')
     parser.add_argument('--sample_every', type=int, default=500, help='Sample every n steps')
     parser.add_argument('--calculate_fid', action='store_true', help='Calculate FID during training')
+    parser.add_argument('--calculate_is', action='store_true', help='Calculate Inception Score during training')
     parser.add_argument('--num_fid_sample', type=int, default=30000, help='Number of samples to use for FID calculation')
     parser.add_argument('--save', action='store_true', help='Save samples during training')
     parser.add_argument('--num_samples', type=int, default=36, help='Number of samples to generate during training')
@@ -221,7 +222,8 @@ if __name__ == "__main__":
     # pretrained_model_path = os.path.join(cur_dir, 'results', args.dataset, '20240404_005104fedavg-iid-mdlmedium-u-cm50000-total_clnt1-neighbor1-seed2023.pth')
     ddim_samplers = setup_ddim_sampler(args, diffusion_model) # Just one sampler in defalt
     fid_scorer = setup_fid_scorer(args,image_size=diffusion_model.image_size)
-    global_model_trainer = setup_trainer(args, diffusion_model, fid_scorer=fid_scorer, ddim_samplers=ddim_samplers,logger=logger)
+    inception_scorer = setup_inception_scorer(args,image_size=diffusion_model.image_size)
+    global_model_trainer = setup_trainer(args, diffusion_model, fid_scorer=fid_scorer, inception_scorer=inception_scorer,ddim_samplers=ddim_samplers,logger=logger)
     logger.info(diffusion_model)
 
     data_info = partition_data_indices_cifar10(datadir=args.data_dir, partition=args.partition_method, n_nets=args.client_num_in_total, n_cls=args.partition_alpha)
