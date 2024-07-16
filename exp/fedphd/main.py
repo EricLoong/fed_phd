@@ -132,6 +132,7 @@ def setup_ddim_sampler(args, diffusion_model):
         'sample_every': args.sample_every,
         'calculate_fid': args.calculate_fid,
         'num_fid_sample': args.num_fid_sample,
+        'calculate_inception': args.calculate_is,
         'save': args.save
     }
 

@@ -10,6 +10,7 @@ python main.py --dataset 'cifar10' \
 --seed 2023 \
 --save \
 --calculate_fid \
+--calculate_is \
 --aggr_freq 5 \
 --balance_agg_a 5000 \
 --num_edge_servers 2 \
