@@ -105,7 +105,7 @@ def add_args(parser):
     parser.add_argument('--num_samples', type=int, default=36, help='Number of samples to generate during training')
     parser.add_argument('--cpu_percentage', type=float, default=0.0,
                         help='Percentage of CPU cores to use for data loading')
-    parser.add_argument('--fid_estimate_batch_size', type=int, default=256, help='Batch size for FID estimation')
+    parser.add_argument('--fid_estimate_batch_size', type=int, default=32, help='Batch size for FID estimation')
     parser.add_argument('--clip', type=bool, default=True, help='Clip images during generation')
     parser.add_argument('--seed', type=int, default=2024, help='Random seed')
     parser.add_argument('--device', type=str, default='cuda' if torch.cuda.is_available() else 'cpu', help='Device to use for training')
