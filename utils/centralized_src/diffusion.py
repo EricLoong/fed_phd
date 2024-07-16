@@ -157,7 +157,7 @@ class GaussianDiffusion(nn.Module):
 
 class DDIM_Sampler(nn.Module):
     def __init__(self, ddpm_diffusion_model, ddim_sampling_steps=100, eta=0, sample_every=5000, fixed_noise=False,
-                 calculate_fid=False, num_fid_sample=None, generate_image=True, clip=True, save=False):
+                 calculate_fid=False, calculate_inception=False, num_fid_sample=None, generate_image=True, clip=True, save=False):
         """
         Denoising Diffusion Implicit Models (DDIM), Jiaming Song et al.
         :param ddpm_diffusion_model: DDPM diffusion model.
@@ -184,6 +184,7 @@ class DDIM_Sampler(nn.Module):
         self.sample_every = sample_every
         self.fixed_noise = fixed_noise
         self.calculate_fid = calculate_fid
+        self.calculate_inception = calculate_inception
         self.num_fid_sample = num_fid_sample
         self.generate_image = generate_image
         self.channel = ddpm_diffusion_model.channel
