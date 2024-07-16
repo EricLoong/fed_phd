@@ -149,11 +149,12 @@ def load_model(args):
     model = diffusion.to(args.device)
     return model
 
-def setup_trainer(args, diffusion_model, fid_scorer, ddim_samplers,logger):
+def setup_trainer(args, diffusion_model, fid_scorer, inception_scorer,ddim_samplers,logger):
     # Initialize the trainer with the provided arguments
     trainer = Trainer(args=args,logger=logger,
         diffusion_model=diffusion_model,
         fid_scorer=fid_scorer,
+        inception_scorer=inception_scorer,
         batch_size=args.batch_size,
         lr=args.lr,
         num_samples=args.num_samples,
