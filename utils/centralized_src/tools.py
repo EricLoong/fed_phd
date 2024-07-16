@@ -188,7 +188,7 @@ def setup_fid_scorer(args, image_size):
     return fid_scorer
 
 def setup_inception_scorer(args, image_size):
-    batch_size = args.inception_batch_size
+    batch_size = args.fid_estimate_batch_size
     dataset = dataset_wrapper(
         dataset=args.dataset,
         data_dir=args.data_dir,
