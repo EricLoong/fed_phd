@@ -186,6 +186,7 @@ class DDIM_Sampler(nn.Module):
         self.calculate_fid = calculate_fid
         self.calculate_inception = calculate_inception
         self.num_fid_sample = num_fid_sample
+        self.num_inception_sample= num_fid_sample
         self.generate_image = generate_image
         self.channel = ddpm_diffusion_model.channel
         self.image_size = ddpm_diffusion_model.image_size
