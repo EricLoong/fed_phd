@@ -51,8 +51,8 @@ def add_args(parser):
     parser.add_argument('--model_name', type=str, default='simple-u', metavar='N',
                         help="network architecture, supporting 'simple-u', 'medium-u', 'ddpm-u'")
 
-    parser.add_argument('--dataset', type=str, default='cifar10', metavar='N',
-                        help='dataset used for training')
+    parser.add_argument('--dataset', type=str, default='cifar10', choices=['cifar10', 'celeba-hq-resized'], metavar='N',
+                        help='dataset used for training (options: cifar10, celeba-hq-resized)')
 
     parser.add_argument('--data_dir', type=str, default=os.path.join(base_path, 'data') if base_path else '/nfs/fed_diff/data/', help='Data directory')
     parser.add_argument('--results_dir', type=str, default='./results', help='Results directory')
@@ -145,6 +145,11 @@ def load_model(args):
         image_size = 32
         unet_cifar10 = Unet(dim=128,dim_multiply=(1,2,2,2),image_size=image_size,attn_resolutions=(16,),dropout=0.1,num_res_blocks=2)
         diffusion = GaussianDiffusion(unet_cifar10, image_size=image_size).to(args.device)
+    elif args.dataset == "celeba-hq-resized":
+        image_size = 256
+        unet_celeba = Unet(dim=128,dim_multiply=(1,1,2,2,4,4),image_size=image_size,attn_resolutions=(16,),dropout=0.0,num_res_blocks=2)
+        # we take a celeba-hq-resized image, if the image size is 1024, attn_resolutions might be 64.
+        diffusion = GaussianDiffusion(unet_celeba, image_size=image_size).to(args.device)
     else:
         raise ValueError(f"Dataset {args.dataset} not supported")
     model = diffusion.to(args.device)
@@ -190,6 +195,7 @@ if __name__ == "__main__":
     args.identity += "-neighbor" + str(args.client_num_per_round)
     args.identity += '-balance_agg' + str(args.balance_agg_a)
     args.identity += "-seed" + str(args.seed)
+
 
 
     cur_dir = os.path.abspath(__file__).rsplit("/", 1)[0]
