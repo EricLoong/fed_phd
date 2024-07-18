@@ -214,13 +214,17 @@ class Trainer:
     def ddim_inception_calculation(self, current_step):
         with torch.no_grad():
             for sampler in self.ddim_samplers:
-                if sampler.calculate_inception and (current_step+1) % self.args.fid_freq == 0:
+                if sampler.calculate_inception and (current_step + 1) % self.args.fid_freq == 0:
                     # Calculate the Inception Score at the same time of FID calculation
                     print(f"Calculating Inception Score at step {current_step}")
-                    ddim_cur_inception_mean, ddim_cur_inception_std = self.inception_scorer.inception_score(sampler.num_inception_sample)
+                    sample_func = partial(sampler.sample, self.diffusion_model)
+                    ddim_cur_inception_mean, ddim_cur_inception_std = self.inception_scorer.inception_score(sample_func, sampler.num_inception_sample)
                     self.logger.info(f"Inception Score using {sampler.sampler_name} at step {current_step}: Mean {ddim_cur_inception_mean}, Std {ddim_cur_inception_std}")
-                    #if sampler.save:
-                    #    self.save_model(current_step, sampler.sampler_name, ddim_cur_inception_mean)
+                    # Uncomment the following lines if you want to save the model based on Inception Score
+                    # if sampler.best_inception[0] < ddim_cur_inception_mean:
+                    #     sampler.best_inception[0] = ddim_cur_inception_mean
+                    #     if sampler.save:
+                    #         self.save_model(current_step, sampler.sampler_name, ddim_cur_inception_mean)
 
     def save_model(self, step, sampler_name, fid_score):
         # Construct a filename that includes the step, sampler name, and FID score

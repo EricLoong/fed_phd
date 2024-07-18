@@ -121,13 +121,14 @@ class InceptionScore:
             features = adaptive_avg_pool2d(features, output_size=(1, 1))
         return features.squeeze()
 
-    def inception_score(self, num_samples, splits=10):
+    def inception_score(self, sampler, num_samples, splits=10):
         self.inception.eval()
         preds = []
 
-        for batch in tqdm(self.dataLoader, desc='Calculating Inception Score'):
-            samples = batch.to(self.device) if isinstance(batch, torch.Tensor) else batch[0].to(self.device)
-            features = self.calculate_inception_features(samples)
+        batches = num_to_groups(num_samples, self.batch_size)
+        for batch in tqdm(batches, desc='Calculating Inception Score'):
+            fake_samples = sampler(batch, clip=True, min1to1=False)
+            features = self.calculate_inception_features(fake_samples)
             preds.append(features.detach().cpu().numpy())
 
         preds = np.concatenate(preds, axis=0)
