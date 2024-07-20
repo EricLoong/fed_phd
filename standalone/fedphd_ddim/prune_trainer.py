@@ -179,7 +179,7 @@ class Trainer:
     def ddim_image_generation(self, current_step):
         with torch.no_grad():
             for sampler in self.ddim_samplers:
-                if current_step % sampler.sample_every == 0:
+                if (current_step+1) % sampler.sample_every == 0:
                     print(f"Generating images at step {current_step}")
                     batches = num_to_groups(self.num_samples, self.batch_size)
                     c_batch = np.insert(np.cumsum(np.array(batches)), 0, 0)
