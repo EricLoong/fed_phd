@@ -48,11 +48,11 @@ def add_args(parser):
     return a parser added with args required by fit
     """
     # Training settings
-    parser.add_argument('--model_name', type=str, default='simple-u', metavar='N',
-                        help="network architecture, supporting 'simple-u', 'medium-u', 'ddpm-u'")
+#    parser.add_argument('--model_name', type=str, default='simple-u', metavar='N',
+#                        help="network architecture, supporting 'simple-u', 'medium-u', 'ddpm-u'")
 
-    parser.add_argument('--dataset', type=str, default='cifar10', choices=['cifar10', 'celeba-hq-resized'], metavar='N',
-                        help='dataset used for training (options: cifar10, celeba-hq-resized)')
+    parser.add_argument('--dataset', type=str, default='cifar10', choices=['cifar10', 'celeba'], metavar='N',
+                        help='dataset used for training (options: cifar10, celeba)')
 
     parser.add_argument('--data_dir', type=str, default=os.path.join(base_path, 'data') if base_path else '/nfs/fed_diff/data/', help='Data directory')
     parser.add_argument('--results_dir', type=str, default='./results', help='Results directory')
@@ -145,10 +145,9 @@ def load_model(args):
         image_size = 32
         unet_cifar10 = Unet(dim=128,dim_multiply=(1,2,2,2),image_size=image_size,attn_resolutions=(16,),dropout=0.1,num_res_blocks=2)
         diffusion = GaussianDiffusion(unet_cifar10, image_size=image_size).to(args.device)
-    elif args.dataset == "celeba-hq-resized":
-        image_size = 256
-        unet_celeba = Unet(dim=128,dim_multiply=(1,1,2,2,4,4),image_size=image_size,attn_resolutions=(16,),dropout=0.0,num_res_blocks=2)
-        # we take a celeba-hq-resized image, if the image size is 1024, attn_resolutions might be 64.
+    elif args.dataset == "celeba":
+        image_size = 64
+        unet_celeba = Unet(dim=128,dim_multiply=(1,2,2,2),image_size=image_size,attn_resolutions=(16,),dropout=0.0,num_res_blocks=2)
         diffusion = GaussianDiffusion(unet_celeba, image_size=image_size).to(args.device)
     else:
         raise ValueError(f"Dataset {args.dataset} not supported")
@@ -174,7 +173,7 @@ def setup_trainer(args, diffusion_model, fid_scorer, inception_scorer,ddim_sampl
 
 if __name__ == "__main__":
     torch.cuda.empty_cache()
-    parser = add_args(argparse.ArgumentParser(description="FedAvg-standalone"))
+    parser = add_args(argparse.ArgumentParser(description="FedPhD-standalone"))
     args = parser.parse_args()
     device = args.device
     # print("torch version{}".format(torch.__version__))
@@ -188,7 +187,7 @@ if __name__ == "__main__":
         data_partition += str(args.partition_alpha)
     args.identity = "fedphd" + "-" + data_partition
     args.client_num_per_round = int(args.client_num_in_total * args.frac)
-    args.identity += "-mdl" + args.model_name
+    #args.identity += "-mdl" + args.model_name
     args.identity += (
         "-cm" + str(args.comm_round) + "-total_clnt" + str(args.client_num_in_total)
     )

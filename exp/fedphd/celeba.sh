@@ -1,5 +1,5 @@
 #!/bin/bash
-python main.py --dataset 'celeba-hq-resized' \
+python main.py --dataset 'celeba' \
 --partition_method 'noniid-pathological' \
 --batch_size 64 \
 --lr 2e-5 \

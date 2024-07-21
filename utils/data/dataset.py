@@ -10,7 +10,7 @@ from glob import glob
 from PIL import Image
 import json
 from utils.data.cifar10 import CIFAR10, partition_data_indices_cifar10
-from utils.data.celeba import CelebaHQ
+from utils.data.celeba import CelebADataset, partition_data_indices_celeba
 
 ssl._create_default_https_context = ssl._create_unverified_context
 
@@ -29,7 +29,7 @@ class CustomDataset(Dataset):
         return self.transform(img)
 
 
-def dataset_wrapper(dataset, data_dir, image_size, augment_horizontal_flip=True, info_color='green', min1to1=True, partial_data=False, net_dataidx_map=None, zip_file_name='images.zip'):
+def dataset_wrapper(dataset, data_dir, image_size, augment_horizontal_flip=True, info_color='green', min1to1=True, partial_data=False, net_dataidx_map=None):
     transform = transforms.Compose([
         transforms.Resize(image_size),
         transforms.RandomHorizontalFlip() if augment_horizontal_flip else Lambda(lambda x: x),
@@ -44,25 +44,24 @@ def dataset_wrapper(dataset, data_dir, image_size, augment_horizontal_flip=True,
         print(colored('Successfully loaded {} images!'.format(len(dataSet)), info_color))
     else:
         dataset = dataset.lower()
-        assert dataset in ['cifar10', 'celeba-hq-resized'], "Dataset must be 'cifar10', 'celeba-hq-resized' or a valid directory path."
+        assert dataset in ['cifar10', 'celeba'], "Dataset must be 'cifar10', 'celeba' or a valid directory path."
         print(colored('Loading {} dataset'.format(dataset), info_color))
         if dataset == 'cifar10':
             train_set = CIFAR10(root=data_dir, train=True, download=True, transform=transform)
-            test_set = CIFAR10(root=data_dir, train=False, download=True, transform=transform)
             if partial_data and net_dataidx_map is not None:
                 dataSet = Subset(train_set, net_dataidx_map)
                 print(colored(f'Partitioned CIFAR10 Dataset: {len(dataSet)} images.', info_color))
             else:
                 dataSet = train_set
                 print(colored(f'Loaded CIFAR10 dataset with {len(dataSet)} images.', info_color))
-        elif dataset == 'celeba-hq-resized':
-            train_set = CelebaHQ(root=data_dir, train=True, transform=transform)
+        elif dataset == 'celeba':
+            train_set = CelebADataset(root=data_dir, split='train', transform=transform)
             if partial_data and net_dataidx_map is not None:
                 dataSet = Subset(train_set, net_dataidx_map)
-                print(colored(f'Partitioned CelebaHQ Dataset: {len(dataSet)} images.', info_color))
+                print(colored(f'Partitioned CelebA Dataset: {len(dataSet)} images.', info_color))
             else:
                 dataSet = train_set
-                print(colored(f'Loaded CelebaHQ dataset with {len(dataSet)} images.', info_color))
+                print(colored(f'Loaded CelebA dataset with {len(dataSet)} images.', info_color))
         else:
             raise ValueError('Dataset not supported')
 
@@ -82,6 +81,3 @@ def load_partition_map(datadir):
     with open(os.path.join(datadir, 'partition_map.json'), 'r') as fp:
         partition_data = json.load(fp)
     return partition_data['index_map'], partition_data['data_count']
-
-
-

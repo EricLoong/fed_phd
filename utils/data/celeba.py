@@ -1,42 +1,39 @@
-import os
-import zipfile
-from PIL import Image
-from torch.utils.data import Dataset
+import numpy as np
 import pandas as pd
+import os
+from torchvision.datasets import CelebA
+from torch.utils.data import DataLoader, Dataset
+from torchvision import transforms
 
-# Create a custom dataset class for CelebA-HQ, which is the usage as CIFAR10.
-
-class CelebaHQ(Dataset):
-    def __init__(self, root, train=True, transform=None):
-        self.root = os.path.expanduser(root)
-        self.train = train
-        self.transform = transform
-        self.zip_file_path = os.path.join(self.root, 'celeba_images.zip')
-
-        with zipfile.ZipFile(self.zip_file_path, 'r') as z:
-            # Assuming images are directly in the root of the zip file
-            self.image_ids = [info.filename for info in z.infolist() if info.filename.endswith(('jpg', 'jpeg', 'png'))]
+# Custom Dataset to include CelebA attributes
+class CelebADataset(Dataset):
+    def __init__(self, root, split, transform=None):
+        self.celeba = CelebA(root, split=split, download=True, transform=transform)
+        self.attr = pd.read_csv(os.path.join(root, 'celeba', 'list_attr_celeba.csv'))
+        self.attr = self.attr.replace(-1, 0)  # Replace -1 with 0 for binary attributes
 
     def __len__(self):
-        return len(self.image_ids)
+        return len(self.celeba)
 
-    def __getitem__(self, index):
-        img_name = self.image_ids[index]
-        with zipfile.ZipFile(self.zip_file_path, 'r') as z:
-            with z.open(img_name) as img_file:
-                image = Image.open(img_file).convert('RGB')
+    def __getitem__(self, idx):
+        image, _ = self.celeba[idx]
+        attributes = self.attr.iloc[idx][['Male', 'Pale_Skin', 'Young']]
+        return image, attributes
 
-        if self.transform:
-            image = self.transform(image)
-
-        return image
-
-import numpy as np
+def create_classes(attr):
+    # Create a unique class based on binary encoding of the three attributes
+    return attr['Male'] * 4 + attr['Pale_Skin'] * 2 + attr['Young']
 
 def partition_data_indices_celeba(datadir, partition, n_nets, n_cls):
-    # Load CelebA-HQ dataset attributes
-    celeba_dataset = CelebaHQ(datadir, train=True)
-    y_train = [attr[0] for _, attr in celeba_dataset]  # Assuming using the first attribute for simplicity
+    # Load CelebA dataset and attributes
+    transform = transforms.Compose([transforms.ToTensor()])
+    dataset = CelebADataset(root=datadir, split='train', transform=transform)
+    y_train = dataset.attr[['Male', 'Pale_Skin', 'Young']].apply(create_classes, axis=1).values
+
+    # Count samples for each class
+    class_counts = np.bincount(y_train, minlength=8)
+    for i in range(8):
+        print(f"Class {i}: {class_counts[i]} samples")
 
     # Initialize the data index map, local data number map, and label distribution map
     net_dataidx_map = {}
@@ -44,8 +41,7 @@ def partition_data_indices_celeba(datadir, partition, n_nets, n_cls):
     label_distribution = {client_id: [] for client_id in range(n_nets)}
 
     # Gather indices for each class
-    unique_classes = list(set(y_train))
-    class_indices = [np.where(np.array(y_train) == i)[0] for i in unique_classes]
+    class_indices = [np.where(y_train == i)[0] for i in range(8)]  # 8 classes based on attributes
 
     if partition == 'iid':
         all_idxs = np.arange(len(y_train))
@@ -58,7 +54,7 @@ def partition_data_indices_celeba(datadir, partition, n_nets, n_cls):
             local_number_data[i] = len(net_dataidx_map[i])
     elif partition == 'noniid-pathological':
         # Calculate the number of clients per class, assuming each class must be represented in n_cls clients
-        clients_per_class = n_nets * n_cls // len(unique_classes)
+        clients_per_class = n_nets * n_cls // 8
         for i, cls_idx in enumerate(class_indices):
             np.random.shuffle(cls_idx)
             split_size = len(cls_idx) // clients_per_class
@@ -80,18 +76,4 @@ def partition_data_indices_celeba(datadir, partition, n_nets, n_cls):
         print(f"Client {client_id}: {labels}")
 
     return net_dataidx_map, local_number_data, label_distribution
-
-# Example usage
-#if __name__ == '__main__':
-#    datadir = '~/data/celeba'
-#    partition = 'iid'
-#    n_nets = 5
-#    n_cls = 2
-
-#    net_dataidx_map, local_number_data, label_distribution = partition_data_indices_celeba(datadir, partition, n_nets, n_cls)
-#    print(net_dataidx_map)
-#    print(local_number_data)
-#    print(label_distribution)
-
-
 
