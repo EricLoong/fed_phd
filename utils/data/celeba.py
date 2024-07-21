@@ -78,6 +78,7 @@ def partition_data_indices_celeba(datadir, partition, n_nets, n_cls):
             local_number_data[i] += len(assigned_samples)
             label_distribution[i].append(cls)
             total_samples -= len(assigned_samples)
+            print(f"Assigned {len(assigned_samples)} samples from class {cls} to client {i}")
 
     # Ensure all data is assigned
     remaining_indices = [index for indices in class_indices for index in indices]
@@ -85,10 +86,15 @@ def partition_data_indices_celeba(datadir, partition, n_nets, n_cls):
         client_id = np.argmin([len(v) for v in net_dataidx_map.values()])  # Assign to client with least data
         net_dataidx_map[client_id].append(idx)
         local_number_data[client_id] += 1
+        print(f"Assigned remaining sample {idx} to client {client_id}")
 
     # Print label distribution for each client
     for client_id, labels in label_distribution.items():
-        print(f"Client {client_id}: {labels}")
+        print(f"Client {client_id}: {labels}, Total samples: {local_number_data[client_id]}")
+
+    # Verify no overlapping indices
+    all_indices = [idx for indices in net_dataidx_map.values() for idx in indices]
+    assert len(all_indices) == len(set(all_indices)), "Overlap detected in data indices!"
 
     return net_dataidx_map, local_number_data, label_distribution
 
