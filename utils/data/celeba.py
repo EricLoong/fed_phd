@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import os
+from math import ceil
 from torchvision.datasets import CelebA
 from torch.utils.data import Dataset
 from torchvision import transforms
@@ -31,6 +32,17 @@ def create_classes(attr):
     # Create a unique class based on binary encoding of the two attributes
     return int(attr['Male']) * 2 + int(attr['Young'])
 
+def adjust_client_distribution(client_counts, total_clients):
+    while sum(client_counts) != total_clients:
+        diff = sum(client_counts) - total_clients
+        if diff > 0:
+            max_index = np.argmax(client_counts)
+            client_counts[max_index] -= 1
+        elif diff < 0:
+            min_index = np.argmin(client_counts)
+            client_counts[min_index] += 1
+    return client_counts
+
 def partition_data_indices_celeba(datadir, partition, n_nets):
     # Load CelebA dataset and attributes
     transform = transforms.Compose([transforms.ToTensor()])
@@ -57,24 +69,23 @@ def partition_data_indices_celeba(datadir, partition, n_nets):
             local_number_data[client_id] = len(assigned_samples)
             label_distribution[client_id] = list(np.unique(y_train[assigned_samples]))
     else:  # Non-IID
-        # Ensure each client gets one label
-        assert n_nets >= 4, "Number of clients must be at least equal to the number of classes"
-
-        # Gather indices for each class
-        class_indices = [np.where(y_train == i)[0] for i in range(4)]
+        # Calculate the number of clients per class
+        num_clients_per_class = [ceil(n_nets * class_counts[i] / len(y_train)) for i in range(4)]
+        num_clients_per_class = adjust_client_distribution(num_clients_per_class, n_nets)
 
         client_id = 0
-        clients_per_class = n_nets // 4
-        extra_clients = n_nets % 4
-
         for cls in range(4):
-            num_clients_for_class = clients_per_class + (1 if cls < extra_clients else 0)
-            num_samples_per_client = len(class_indices[cls]) // num_clients_for_class
+            class_indices = np.where(y_train == cls)[0]
+            np.random.shuffle(class_indices)
+            num_clients = num_clients_per_class[cls]
+            num_samples_per_client = len(class_indices) // num_clients
 
-            for i in range(num_clients_for_class):
-                start_idx = i * num_samples_per_client
-                end_idx = start_idx + num_samples_per_client if i < num_clients_for_class - 1 else len(class_indices[cls])
-                assigned_samples = class_indices[cls][start_idx:end_idx]
+            for _ in range(num_clients):
+                if client_id >= n_nets:
+                    break
+                start_idx = _ * num_samples_per_client
+                end_idx = start_idx + num_samples_per_client if _ < num_clients - 1 else len(class_indices)
+                assigned_samples = class_indices[start_idx:end_idx]
 
                 net_dataidx_map[client_id].extend(assigned_samples)
                 label_distribution[client_id].append(cls)
