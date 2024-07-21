@@ -49,8 +49,13 @@ def partition_data_indices_celeba(datadir, partition, n_nets):
     dataset = CelebADataset(root=datadir, split='train', transform=transform)
     y_train = dataset.attr[['Male', 'Young']].apply(create_classes, axis=1).values
 
+    # Check the length of the dataset to ensure indices are within range
+    dataset_length = len(dataset)
+    print(f"Dataset length: {dataset_length}")
+
     # Count samples for each class
     class_counts = np.bincount(y_train, minlength=4)
+    print(f"Class counts: {class_counts}")
 
     # Initialize the data index map, label distribution map, and local data number map
     net_dataidx_map = {i: [] for i in range(n_nets)}
@@ -72,30 +77,36 @@ def partition_data_indices_celeba(datadir, partition, n_nets):
         # Calculate the number of clients per class
         num_clients_per_class = [ceil(n_nets * class_counts[i] / len(y_train)) for i in range(4)]
         num_clients_per_class = adjust_client_distribution(num_clients_per_class, n_nets)
+        print(f"Number of clients per class: {num_clients_per_class}")
 
         client_id = 0
         for cls in range(4):
             class_indices = np.where(y_train == cls)[0]
-            print('Maximum indices:', max(class_indices))
             np.random.shuffle(class_indices)
             num_clients = num_clients_per_class[cls]
             num_samples_per_client = len(class_indices) // num_clients
 
-            for _ in range(num_clients):
-                if client_id >= n_nets:
-                    break
-                start_idx = _ * num_samples_per_client
-                end_idx = start_idx + num_samples_per_client if _ < num_clients - 1 else len(class_indices)
+            for i in range(num_clients):
+                start_idx = i * num_samples_per_client
+                end_idx = start_idx + num_samples_per_client if i < num_clients - 1 else len(class_indices)
                 assigned_samples = class_indices[start_idx:end_idx]
+
+                if len(assigned_samples) == 0:
+                    continue
 
                 net_dataidx_map[client_id].extend(assigned_samples)
                 label_distribution[client_id].append(cls)
                 local_number_data[client_id] = len(assigned_samples)
                 client_id += 1
 
+                if client_id >= n_nets:
+                    break
+            if client_id >= n_nets:
+                break
+
     # Ensure all data is assigned and there are no out-of-range indices
     for client_id, indices in net_dataidx_map.items():
-        assert all(0 <= idx < len(dataset) for idx in indices), f"Client {client_id} has out-of-range indices!"
+        assert all(0 <= idx < len(y_train) for idx in indices), f"Client {client_id} has out-of-range indices!"
 
     # Verify no overlapping indices
     all_indices = [idx for indices in net_dataidx_map.values() for idx in indices]
