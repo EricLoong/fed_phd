@@ -59,31 +59,36 @@ def partition_data_indices_celeba(datadir, partition, n_nets, n_cls):
     # Assign data to clients
     for i in range(n_nets):
         # Recalculate probabilities to ensure they sum to 1
-        class_probabilities = np.array([len(cls_idx) / total_samples for cls_idx in class_indices])
-        class_probabilities /= class_probabilities.sum()  # Normalize to ensure the sum is 1
+        class_probabilities = np.array(
+            [len(cls_idx) / total_samples if len(cls_idx) > 0 else 0 for cls_idx in class_indices])
+        if class_probabilities.sum() == 0:
+            break
+        class_probabilities /= class_probabilities.sum()
 
         selected_classes = np.random.choice(4, 2, p=class_probabilities, replace=False)
         for cls in selected_classes:
             cls_indices = class_indices[cls]
+            if len(cls_indices) == 0:
+                continue
             np.random.shuffle(cls_indices)
-            num_samples = len(cls_indices) // (n_nets // 2)  # Divide samples equally among clients
+            num_samples = min(len(cls_indices), len(cls_indices) // (n_nets // 2))
             assigned_samples = cls_indices[:num_samples]
             class_indices[cls] = cls_indices[num_samples:]  # Remove assigned samples from class indices
             net_dataidx_map[i].extend(assigned_samples)
             local_number_data[i] += len(assigned_samples)
             label_distribution[i].append(cls)
+            total_samples -= len(assigned_samples)
 
     # Ensure all data is assigned
     remaining_indices = [index for indices in class_indices for index in indices]
-    for i in range(n_nets):
-        if len(remaining_indices) == 0:
-            break
-        additional_sample = remaining_indices.pop(0)
-        net_dataidx_map[i].append(additional_sample)
-        local_number_data[i] += 1
+    for idx in remaining_indices:
+        client_id = np.argmin([len(v) for v in net_dataidx_map.values()])  # Assign to client with least data
+        net_dataidx_map[client_id].append(idx)
+        local_number_data[client_id] += 1
 
     # Print label distribution for each client
     for client_id, labels in label_distribution.items():
         print(f"Client {client_id}: {labels}")
 
     return net_dataidx_map, local_number_data, label_distribution
+
