@@ -31,10 +31,7 @@ def create_classes(attr):
     # Create a unique class based on binary encoding of the two attributes
     return int(attr['Male']) * 2 + int(attr['Young'])
 
-def partition_data_indices_celeba(datadir, partition, n_nets, n_cls):
-    # Ensure n_cls is an integer
-    n_cls = int(n_cls)
-
+def partition_data_indices_celeba(datadir, n_nets):
     # Load CelebA dataset and attributes
     transform = transforms.Compose([transforms.ToTensor()])
     dataset = CelebADataset(root=datadir, split='train', transform=transform)
@@ -42,83 +39,48 @@ def partition_data_indices_celeba(datadir, partition, n_nets, n_cls):
 
     # Count samples for each class
     class_counts = np.bincount(y_train, minlength=4)
-    total_samples = sum(class_counts)
 
-    for i in range(4):
-        print(f"Class {i}: {class_counts[i]} samples")
+    # Ensure each client gets one label
+    assert n_nets >= 4, "Number of clients must be at least equal to the number of classes"
 
-    # Calculate class proportions and occurrences
-    class_proportions = class_counts / total_samples
-    class_occurrences = {cls: max(1, int(np.ceil(proportion * n_nets))) for cls, proportion in enumerate(class_proportions)}
-
-    # Initialize the data index map, label distribution map, and class counts per client
+    # Initialize the data index map and label distribution map
     net_dataidx_map = {i: [] for i in range(n_nets)}
     label_distribution = {i: [] for i in range(n_nets)}
-    client_class_counts = {i: {cls: 0 for cls in range(4)} for i in range(n_nets)}
     local_number_data = {i: 0 for i in range(n_nets)}
 
-    # Assign labels to clients
-    client_assignments = {i: [] for i in range(n_nets)}
-    for cls, occurrences in class_occurrences.items():
-        assigned_clients = np.random.choice(n_nets, occurrences, replace=False)
-        for client_id in assigned_clients:
-            client_assignments[client_id].append(cls)
-            label_distribution[client_id].append(cls)
-
-    # Ensure each client has exactly n_cls classes
-    for client_id in range(n_nets):
-        if len(client_assignments[client_id]) < n_cls:
-            additional_classes = np.random.choice([cls for cls in range(4) if cls not in client_assignments[client_id]], n_cls - len(client_assignments[client_id]), replace=False)
-            client_assignments[client_id].extend(additional_classes)
-            label_distribution[client_id].extend(additional_classes)
-        elif len(client_assignments[client_id]) > n_cls:
-            client_assignments[client_id] = client_assignments[client_id][:n_cls]
-            label_distribution[client_id] = label_distribution[client_id][:n_cls]
-
-    # Assign samples to clients based on label distribution
+    # Gather indices for each class
     class_indices = [np.where(y_train == i)[0] for i in range(4)]
-    for client_id, classes in client_assignments.items():
-        for cls in classes:
-            num_samples = len(class_indices[cls]) // class_occurrences[cls]
-            assigned_samples = class_indices[cls][:num_samples]
-            net_dataidx_map[client_id].extend(assigned_samples)
-            client_class_counts[client_id][cls] += len(assigned_samples)
-            local_number_data[client_id] += len(assigned_samples)
-            class_indices[cls] = class_indices[cls][num_samples:]
 
-    # Assign remaining samples to clients
-    for cls, indices in enumerate(class_indices):
-        remaining_clients = [client_id for client_id, assigned_classes in client_assignments.items() if cls in assigned_classes]
-        idx = 0
-        while len(indices) > 0 and idx < len(remaining_clients):
-            client_id = remaining_clients[idx]
-            net_dataidx_map[client_id].append(indices[0])
-            client_class_counts[client_id][cls] += 1
-            local_number_data[client_id] += 1
-            indices = indices[1:]
-            idx += 1
-            if idx == len(remaining_clients):
-                idx = 0
+    # Distribute classes to clients
+    client_id = 0
+    clients_per_class = n_nets // 4
+    extra_clients = n_nets % 4
+
+    for cls in range(4):
+        num_clients_for_class = clients_per_class + (1 if cls < extra_clients else 0)
+        num_samples_per_client = len(class_indices[cls]) // num_clients_for_class
+
+        for _ in range(num_clients_for_class):
+            start_idx = client_id * num_samples_per_client
+            end_idx = start_idx + num_samples_per_client if client_id < num_clients_for_class - 1 else len(class_indices[cls])
+            assigned_samples = class_indices[cls][start_idx:end_idx]
+
+            net_dataidx_map[client_id].extend(assigned_samples)
+            label_distribution[client_id].append(cls)
+            local_number_data[client_id] = len(assigned_samples)
+            client_id += 1
 
     # Ensure all data is assigned and there are no out-of-range indices
-    #for client_id, indices in net_dataidx_map.items():
-    #    out_of_range_indices = [idx for idx in indices if idx < 0 or idx >= len(dataset)]
-    #    if out_of_range_indices:
-    #        print(f"Client {client_id} has out-of-range indices: {out_of_range_indices}")
-    #    assert all(0 <= idx < len(dataset) for idx in indices), f"Client {client_id} has out-of-range indices!"
+    for client_id, indices in net_dataidx_map.items():
+        assert all(0 <= idx < len(dataset) for idx in indices), f"Client {client_id} has out-of-range indices!"
 
     # Verify no overlapping indices
     all_indices = [idx for indices in net_dataidx_map.values() for idx in indices]
-    if len(all_indices) != len(set(all_indices)):
-        print("Overlap detected in data indices!")
-        overlapping_indices = set([x for x in all_indices if all_indices.count(x) > 1])
-        print(f"Overlapping indices: {overlapping_indices}")
     assert len(all_indices) == len(set(all_indices)), "Overlap detected in data indices!"
 
     # Print label distribution and number of samples for each client
     for client_id, labels in label_distribution.items():
         print(f"Client {client_id}: {labels}, Total samples: {len(net_dataidx_map[client_id])}")
-        print(f"Client {client_id} sample distribution: {client_class_counts[client_id]}")
 
     return net_dataidx_map, local_number_data, label_distribution
 

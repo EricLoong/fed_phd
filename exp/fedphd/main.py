@@ -237,6 +237,6 @@ if __name__ == "__main__":
     if args.dataset == "cifar10":
         data_info = partition_data_indices_cifar10(datadir=args.data_dir, partition=args.partition_method, n_nets=args.client_num_in_total, n_cls=args.partition_alpha)
     elif args.dataset == "celeba":
-        data_info = partition_data_indices_celeba(datadir=args.data_dir, partition=args.partition_method, n_nets=args.client_num_in_total, n_cls=args.partition_alpha)
+        data_info = partition_data_indices_celeba(datadir=args.data_dir, partition=args.partition_method, n_nets=args.client_num_in_total)
     FedPhDAPI = fedphd_api(data_info, device, args, global_model_trainer, logger)
     FedPhDAPI.train()
