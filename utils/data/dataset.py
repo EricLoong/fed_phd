@@ -55,7 +55,7 @@ def dataset_wrapper(dataset, data_dir, image_size, augment_horizontal_flip=True,
             else:
                 dataSet = train_set
                 print(colored(f'Loaded CIFAR10 dataset with {len(dataSet)} images.', info_color))
-        elif dataset == 'celeba':
+        elif dataset == 'celeba-hq-resized':
             train_set = CelebaHQ(root=data_dir, train=True, transform=transform)
             if partial_data and net_dataidx_map is not None:
                 dataSet = Subset(train_set, net_dataidx_map)
