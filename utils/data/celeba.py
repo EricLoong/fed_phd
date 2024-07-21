@@ -5,7 +5,6 @@ from torchvision.datasets import CelebA
 from torch.utils.data import Dataset
 from torchvision import transforms
 
-
 # Custom Dataset to include CelebA attributes
 class CelebADataset(Dataset):
     def __init__(self, root, split, transform=None):
@@ -28,11 +27,9 @@ class CelebADataset(Dataset):
         class_label = create_classes(attributes)
         return image, class_label
 
-
 def create_classes(attr):
     # Create a unique class based on binary encoding of the two attributes
     return int(attr['Male']) * 2 + int(attr['Young'])
-
 
 def partition_data_indices_celeba(datadir, partition, n_nets, n_cls):
     # Ensure n_cls is an integer
@@ -50,11 +47,8 @@ def partition_data_indices_celeba(datadir, partition, n_nets, n_cls):
     for i in range(4):
         print(f"Class {i}: {class_counts[i]} samples")
 
-    # Calculate proportions
-    proportions = class_counts / total_samples
-
     # Calculate the number of times each class should appear across all clients
-    class_occurrences = {cls: max(1, int(proportions[cls] * n_nets)) for cls in range(4)}
+    class_occurrences = {cls: max(1, int(np.ceil(proportion * n_nets))) for cls, proportion in enumerate(class_counts / total_samples)}
 
     # Initialize the data index map and label distribution map
     net_dataidx_map = {i: [] for i in range(n_nets)}
@@ -62,18 +56,28 @@ def partition_data_indices_celeba(datadir, partition, n_nets, n_cls):
 
     # Assign labels to clients according to class occurrences
     client_assignments = {i: [] for i in range(n_nets)}
-    for cls in range(4):
-        assigned_clients = np.random.choice(n_nets, class_occurrences[cls], replace=False)
-        for client_id in assigned_clients:
+    client_counter = np.zeros(n_nets, dtype=int)
+    for cls, occurrences in class_occurrences.items():
+        for _ in range(occurrences):
+            # Find the client with the minimum number of assignments to balance the distribution
+            client_id = np.argmin(client_counter)
             client_assignments[client_id].append(cls)
             label_distribution[client_id].append(cls)
+            client_counter[client_id] += 1
+
+    # Debug: Print the label distribution
+    for client_id, labels in label_distribution.items():
+        print(f"Client {client_id}: {labels}")
 
     # Distribute samples to clients according to the determined label distribution
     class_indices = [np.where(y_train == i)[0] for i in range(4)]
     for client_id, classes in client_assignments.items():
         for cls in classes:
-            num_samples = len(class_indices[cls]) // class_occurrences[cls]
-            assigned_samples = class_indices[cls][:num_samples]
+            num_samples = len(class_indices[cls]) // client_counter[client_id]
+            if client_id == list(client_assignments.keys())[-1]:  # Assign remaining samples to the last client for this class
+                assigned_samples = class_indices[cls]
+            else:
+                assigned_samples = class_indices[cls][:num_samples]
             net_dataidx_map[client_id].extend(assigned_samples)
             class_indices[cls] = class_indices[cls][num_samples:]
 
@@ -97,4 +101,3 @@ def partition_data_indices_celeba(datadir, partition, n_nets, n_cls):
         print(f"Client {client_id}: {labels}, Total samples: {len(net_dataidx_map[client_id])}")
 
     return net_dataidx_map, label_distribution
-
