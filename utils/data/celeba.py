@@ -43,7 +43,6 @@ def partition_data_indices_celeba(datadir, partition, n_nets, n_cls):
     # Count samples for each class
     class_counts = np.bincount(y_train, minlength=4)
     total_samples = sum(class_counts)
-    class_probabilities = class_counts / total_samples
 
     for i in range(4):
         print(f"Class {i}: {class_counts[i]} samples")
@@ -56,45 +55,32 @@ def partition_data_indices_celeba(datadir, partition, n_nets, n_cls):
     # Gather indices for each class
     class_indices = [np.where(y_train == i)[0] for i in range(4)]  # 4 classes based on attributes
 
-    # Assign data to clients
+    # Assign data to clients ensuring no overlap and each client gets n_cls classes
+    class_assignment = {i: [] for i in range(4)}
+    for cls in range(4):
+        np.random.shuffle(class_indices[cls])
+        class_split = np.array_split(class_indices[cls], n_nets)
+        for i in range(n_nets):
+            class_assignment[cls].append(class_split[i])
+
     for i in range(n_nets):
-        # Recalculate probabilities to ensure they sum to 1
-        class_probabilities = np.array(
-            [len(cls_idx) / total_samples if len(cls_idx) > 0 else 0 for cls_idx in class_indices])
-        if class_probabilities.sum() == 0:
-            break
-        class_probabilities /= class_probabilities.sum()
-
-        selected_classes = np.random.choice(4, 2, p=class_probabilities, replace=False)
-        for cls in selected_classes:
-            cls_indices = class_indices[cls]
-            if len(cls_indices) == 0:
-                continue
-            np.random.shuffle(cls_indices)
-            num_samples = min(len(cls_indices), len(cls_indices) // (n_nets // 2))
-            assigned_samples = cls_indices[:num_samples]
-            class_indices[cls] = cls_indices[num_samples:]  # Remove assigned samples from class indices
-            net_dataidx_map[i].extend(assigned_samples)
-            local_number_data[i] += len(assigned_samples)
+        assigned_classes = np.random.choice(4, n_cls, replace=False)
+        for cls in assigned_classes:
+            net_dataidx_map[i].extend(class_assignment[cls][i])
+            local_number_data[i] += len(class_assignment[cls][i])
             label_distribution[i].append(cls)
-            total_samples -= len(assigned_samples)
-            print(f"Assigned {len(assigned_samples)} samples from class {cls} to client {i}")
-
-    # Ensure all data is assigned
-    remaining_indices = [index for indices in class_indices for index in indices]
-    for idx in remaining_indices:
-        client_id = np.argmin([len(v) for v in net_dataidx_map.values()])  # Assign to client with least data
-        net_dataidx_map[client_id].append(idx)
-        local_number_data[client_id] += 1
-        print(f"Assigned remaining sample {idx} to client {client_id}")
-
-    # Print label distribution for each client
-    for client_id, labels in label_distribution.items():
-        print(f"Client {client_id}: {labels}, Total samples: {local_number_data[client_id]}")
 
     # Verify no overlapping indices
     all_indices = [idx for indices in net_dataidx_map.values() for idx in indices]
     assert len(all_indices) == len(set(all_indices)), "Overlap detected in data indices!"
+
+    # Ensure all data is assigned and there are no out-of-range indices
+    for client_id, indices in net_dataidx_map.items():
+        assert all(0 <= idx < len(dataset) for idx in indices), f"Client {client_id} has out-of-range indices!"
+
+    # Print label distribution for each client
+    for client_id, labels in label_distribution.items():
+        print(f"Client {client_id}: {labels}, Total samples: {local_number_data[client_id]}")
 
     return net_dataidx_map, local_number_data, label_distribution
 
