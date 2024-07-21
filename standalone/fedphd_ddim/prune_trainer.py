@@ -142,6 +142,7 @@ class Trainer:
     def set_id(self, trainer_id):
         self.id = trainer_id
 
+
     def train(self, round_idx):
         epochs = self.args.epochs
         for epoch in range(epochs):
@@ -151,8 +152,15 @@ class Trainer:
 
             self.logger.info(f"Starting epoch {epoch + 1}/{epochs}")
 
-            for batch_idx, (image, _) in enumerate(self.dataLoader):  # Iterate through all batches
+            for batch_idx, data in enumerate(self.dataLoader):  # Iterate through all batches
                 self.optimizer.zero_grad()
+                if isinstance(data, tuple):
+                    # Dataset with labels (e.g., CIFAR10)
+                    image, _ = data
+                else:
+                    # Dataset without labels (e.g., CelebaHQ)
+                    image = data
+
                 image = image.to(self.device)
                 loss = self.diffusion_model(image)
                 loss.backward()
@@ -163,13 +171,13 @@ class Trainer:
 
                 epoch_loss += loss.item()  # Accumulate the loss
                 num_batches += 1
-                #if batch_idx % 10 == 0:
+                # if batch_idx % 10 == 0:
                 #    self.logger.info(f"Batch {batch_idx}: Loss {loss.item()}")
 
             # Calculate the average loss for the epoch
             average_loss = epoch_loss / num_batches
 
-            #if round_idx % self.args.sample_every == 0:
+            # if round_idx % self.args.sample_every == 0:
             self.logger.info(f"Round {round_idx} Epoch {epoch} Average Loss: {average_loss}")
 
             if self.args.central_train:

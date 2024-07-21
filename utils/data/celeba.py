@@ -12,21 +12,10 @@ class CelebaHQ(Dataset):
         self.train = train
         self.transform = transform
         self.zip_file_path = os.path.join(self.root, 'celeba_images.zip')
-        self.image_dir = 'images'
 
         with zipfile.ZipFile(self.zip_file_path, 'r') as z:
-            self.image_ids = [info.filename for info in z.infolist() if info.filename.startswith(self.image_dir)]
-
-        self.attributes = self._load_attributes()
-
-    def _load_attributes(self):
-        with open(self.attr_file, 'r') as f:
-            lines = f.readlines()
-        # Extract the attribute names
-        attr_names = lines[1].strip().split()
-        # Extract the attribute values
-        attr_values = {line.split()[0]: [int(i) for i in line.split()[1:]] for line in lines[2:]}
-        return attr_values
+            # Assuming images are directly in the root of the zip file
+            self.image_ids = [info.filename for info in z.infolist() if info.filename.endswith(('jpg', 'jpeg', 'png'))]
 
     def __len__(self):
         return len(self.image_ids)
@@ -40,8 +29,7 @@ class CelebaHQ(Dataset):
         if self.transform:
             image = self.transform(image)
 
-        attr = self.attributes[os.path.basename(img_name)]
-        return image, attr
+        return image
 
 import numpy as np
 
