@@ -50,47 +50,38 @@ def partition_data_indices_celeba(datadir, partition, n_nets, n_cls):
     for i in range(4):
         print(f"Class {i}: {class_counts[i]} samples")
 
+    # Calculate proportions
+    proportions = class_counts / total_samples
+
+    # Calculate the number of times each class should appear across all clients
+    class_occurrences = {cls: max(1, int(proportions[cls] * n_nets)) for cls in range(4)}
+
     # Initialize the data index map and label distribution map
     net_dataidx_map = {i: [] for i in range(n_nets)}
-    local_number_data = {i: 0 for i in range(n_nets)}
     label_distribution = {client_id: [] for client_id in range(n_nets)}
 
-    # Gather indices for each class
-    class_indices = [np.where(y_train == i)[0] for i in range(4)]  # 4 classes based on attributes
-
-    # Determine the number of samples to be assigned to each client for each class
-    samples_per_client_per_class = {i: [] for i in range(4)}
+    # Assign labels to clients according to class occurrences
+    client_assignments = {i: [] for i in range(n_nets)}
     for cls in range(4):
-        num_samples = class_counts[cls]
-        samples_per_client = num_samples // n_nets
-        remainder_samples = num_samples % n_nets
-        for i in range(n_nets):
-            if i < remainder_samples:
-                samples_per_client_per_class[cls].append(samples_per_client + 1)
-            else:
-                samples_per_client_per_class[cls].append(samples_per_client)
+        assigned_clients = np.random.choice(n_nets, class_occurrences[cls], replace=False)
+        for client_id in assigned_clients:
+            client_assignments[client_id].append(cls)
+            label_distribution[client_id].append(cls)
 
-    # Assign data to clients ensuring no overlap
-    for cls in range(4):
-        np.random.shuffle(class_indices[cls])
-        start_idx = 0
-        for i in range(n_nets):
-            end_idx = start_idx + samples_per_client_per_class[cls][i]
-            assigned_samples = class_indices[cls][start_idx:end_idx]
-            net_dataidx_map[i].extend(assigned_samples)
-            local_number_data[i] += len(assigned_samples)
-            if cls not in label_distribution[i]:
-                label_distribution[i].append(cls)
-            start_idx = end_idx
-            print(f"Assigned {len(assigned_samples)} samples from class {cls} to client {i}")
+    # Distribute samples to clients according to the determined label distribution
+    class_indices = [np.where(y_train == i)[0] for i in range(4)]
+    for client_id, classes in client_assignments.items():
+        for cls in classes:
+            num_samples = len(class_indices[cls]) // class_occurrences[cls]
+            assigned_samples = class_indices[cls][:num_samples]
+            net_dataidx_map[client_id].extend(assigned_samples)
+            class_indices[cls] = class_indices[cls][num_samples:]
 
-    # Check for out-of-range indices before the assertion
+    # Ensure all data is assigned and there are no out-of-range indices
     for client_id, indices in net_dataidx_map.items():
         out_of_range_indices = [idx for idx in indices if idx < 0 or idx >= len(dataset)]
         if out_of_range_indices:
             print(f"Client {client_id} has out-of-range indices: {out_of_range_indices}")
-        total_samples_client = len(indices)
-        print(f"Client {client_id} total samples: {total_samples_client}")
         assert all(0 <= idx < len(dataset) for idx in indices), f"Client {client_id} has out-of-range indices!"
 
     # Verify no overlapping indices
@@ -103,12 +94,7 @@ def partition_data_indices_celeba(datadir, partition, n_nets, n_cls):
 
     # Print label distribution for each client
     for client_id, labels in label_distribution.items():
-        print(f"Client {client_id}: {labels}, Total samples: {local_number_data[client_id]}")
+        print(f"Client {client_id}: {labels}, Total samples: {len(net_dataidx_map[client_id])}")
 
-    return net_dataidx_map, local_number_data, label_distribution
+    return net_dataidx_map, label_distribution
 
-
-what the fuck are you doing. You should first decide the client contains which labels according to the proportion of
-For instance, if the class 0,1,2,3 has sample size 5000,10000,5000,10000, then the 1 and 3 has 1/3 to each client and 0 and 2 has only 1/6.
-After this, you would have the label distribution that tell you which class should be into this client. Then, just calculate the class appears how many times for all the clients.Non
-Divided the total sampels of the class by the occurance. For example 10000/10, if class 0 occurs 10 times within 20 clients. I think this will not overlap!!!
