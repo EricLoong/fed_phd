@@ -4,6 +4,7 @@ import os
 from torchvision.datasets import CelebA
 from torch.utils.data import Dataset
 from torchvision import transforms
+import random
 
 
 # Custom Dataset to include CelebA attributes
@@ -42,51 +43,48 @@ def partition_data_indices_celeba(datadir, partition, n_nets, n_cls):
 
     # Count samples for each class
     class_counts = np.bincount(y_train, minlength=4)
+    total_samples = sum(class_counts)
+    class_probabilities = class_counts / total_samples
+
     for i in range(4):
         print(f"Class {i}: {class_counts[i]} samples")
 
-    # Initialize the data index map, local data number map, and label distribution map
-    net_dataidx_map = {}
-    local_number_data = {}
+    # Initialize the data index map and label distribution map
+    net_dataidx_map = {i: [] for i in range(n_nets)}
     label_distribution = {client_id: [] for client_id in range(n_nets)}
 
     # Gather indices for each class
     class_indices = [np.where(y_train == i)[0] for i in range(4)]  # 4 classes based on attributes
 
-    if partition == 'iid':
-        all_idxs = np.arange(len(y_train))
-        np.random.shuffle(all_idxs)
-        data_per_client = len(all_idxs) // n_nets
-        for i in range(n_nets):
-            start_idx = i * data_per_client
-            end_idx = start_idx + data_per_client if i < n_nets - 1 else len(all_idxs)
-            net_dataidx_map[i] = all_idxs[start_idx:end_idx]
-            local_number_data[i] = len(net_dataidx_map[i])
-    elif partition == 'noniid-pathological':
-        # Calculate the number of clients per class, assuming each class must be represented in n_cls clients
-        clients_per_class = n_nets * n_cls // 4
-        clients_per_class = int(clients_per_class)  # Ensure clients_per_class is an integer
-        for i, cls_idx in enumerate(class_indices):
-            np.random.shuffle(cls_idx)
-            split_size = len(cls_idx) // clients_per_class
-            split_size = int(split_size)  # Ensure split_size is an integer
-            for j in range(clients_per_class):
-                j = int(j)  # Ensure j is an integer
-                client_id = (i * clients_per_class + j) % n_nets
-                if client_id in net_dataidx_map:
-                    net_dataidx_map[client_id] = np.concatenate((net_dataidx_map[client_id], cls_idx[j * split_size:(j + 1) * split_size]))
-                else:
-                    net_dataidx_map[client_id] = cls_idx[j * split_size:(j + 1) * split_size]
-                local_number_data[client_id] = len(net_dataidx_map[client_id])
-                if i not in label_distribution[client_id]:
-                    label_distribution[client_id].append(i)
-        # Shuffle data indices for each client to mix classes
-        for client_id in net_dataidx_map:
-            np.random.shuffle(net_dataidx_map[client_id])
+    # Assign data to clients
+    for i in range(n_nets):
+        selected_classes = np.random.choice(4, 2, p=class_probabilities, replace=False)
+        for cls in selected_classes:
+            cls_indices = class_indices[cls]
+            np.random.shuffle(cls_indices)
+            num_samples = len(cls_indices) // (n_nets // 2)  # Divide samples equally among clients
+            assigned_samples = cls_indices[:num_samples]
+            class_indices[cls] = cls_indices[num_samples:]  # Remove assigned samples from class indices
+            net_dataidx_map[i].extend(assigned_samples)
+            label_distribution[i].append(cls)
+            if len(assigned_samples) == 0:
+                class_probabilities[cls] = 0
+            else:
+                class_probabilities[cls] = len(class_indices[cls]) / total_samples
+
+    # Ensure all data is assigned
+    remaining_indices = [index for indices in class_indices for index in indices]
+    for i in range(n_nets):
+        if len(remaining_indices) == 0:
+            break
+        additional_sample = remaining_indices.pop(0)
+        net_dataidx_map[i].append(additional_sample)
 
     # Print label distribution for each client
     for client_id, labels in label_distribution.items():
         print(f"Client {client_id}: {labels}")
 
-    return net_dataidx_map, local_number_data, label_distribution
+    return net_dataidx_map, label_distribution
+
+
 
