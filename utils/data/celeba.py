@@ -4,7 +4,6 @@ import os
 from torchvision.datasets import CelebA
 from torch.utils.data import Dataset
 from torchvision import transforms
-import random
 
 
 # Custom Dataset to include CelebA attributes
@@ -58,6 +57,10 @@ def partition_data_indices_celeba(datadir, partition, n_nets, n_cls):
 
     # Assign data to clients
     for i in range(n_nets):
+        # Recalculate probabilities to ensure they sum to 1
+        class_probabilities = np.array([len(cls_idx) / total_samples for cls_idx in class_indices])
+        class_probabilities /= class_probabilities.sum()  # Normalize to ensure the sum is 1
+
         selected_classes = np.random.choice(4, 2, p=class_probabilities, replace=False)
         for cls in selected_classes:
             cls_indices = class_indices[cls]
@@ -67,10 +70,6 @@ def partition_data_indices_celeba(datadir, partition, n_nets, n_cls):
             class_indices[cls] = cls_indices[num_samples:]  # Remove assigned samples from class indices
             net_dataidx_map[i].extend(assigned_samples)
             label_distribution[i].append(cls)
-            if len(assigned_samples) == 0:
-                class_probabilities[cls] = 0
-            else:
-                class_probabilities[cls] = len(class_indices[cls]) / total_samples
 
     # Ensure all data is assigned
     remaining_indices = [index for indices in class_indices for index in indices]
@@ -85,6 +84,5 @@ def partition_data_indices_celeba(datadir, partition, n_nets, n_cls):
         print(f"Client {client_id}: {labels}")
 
     return net_dataidx_map, label_distribution
-
 
 
