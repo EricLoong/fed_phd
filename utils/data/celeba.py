@@ -65,10 +65,13 @@ def partition_data_indices_celeba(datadir, partition, n_nets, n_cls):
     elif partition == 'noniid-pathological':
         # Calculate the number of clients per class, assuming each class must be represented in n_cls clients
         clients_per_class = n_nets * n_cls // 4
+        clients_per_class = int(clients_per_class)  # Ensure clients_per_class is an integer
         for i, cls_idx in enumerate(class_indices):
             np.random.shuffle(cls_idx)
             split_size = len(cls_idx) // clients_per_class
-            for j in range(int(clients_per_class)):
+            split_size = int(split_size)  # Ensure split_size is an integer
+            for j in range(clients_per_class):
+                j = int(j)  # Ensure j is an integer
                 client_id = (i * clients_per_class + j) % n_nets
                 if client_id in net_dataidx_map:
                     net_dataidx_map[client_id] = np.concatenate((net_dataidx_map[client_id], cls_idx[j * split_size:(j + 1) * split_size]))
