@@ -76,17 +76,21 @@ def partition_data_indices_celeba(datadir, partition, n_nets, n_cls):
         start_idx = 0
         for i in range(n_nets):
             end_idx = start_idx + samples_per_client_per_class[cls][i]
-            net_dataidx_map[i].extend(class_indices[cls][start_idx:end_idx])
-            local_number_data[i] += (end_idx - start_idx)
+            assigned_samples = class_indices[cls][start_idx:end_idx]
+            net_dataidx_map[i].extend(assigned_samples)
+            local_number_data[i] += len(assigned_samples)
             if cls not in label_distribution[i]:
                 label_distribution[i].append(cls)
             start_idx = end_idx
+            print(f"Assigned {len(assigned_samples)} samples from class {cls} to client {i}")
 
-    # Ensure all data is assigned and there are no out-of-range indices
+    # Check for out-of-range indices before the assertion
     for client_id, indices in net_dataidx_map.items():
         out_of_range_indices = [idx for idx in indices if idx < 0 or idx >= len(dataset)]
         if out_of_range_indices:
             print(f"Client {client_id} has out-of-range indices: {out_of_range_indices}")
+        total_samples_client = len(indices)
+        print(f"Client {client_id} total samples: {total_samples_client}")
         assert all(0 <= idx < len(dataset) for idx in indices), f"Client {client_id} has out-of-range indices!"
 
     # Verify no overlapping indices
@@ -102,4 +106,5 @@ def partition_data_indices_celeba(datadir, partition, n_nets, n_cls):
         print(f"Client {client_id}: {labels}, Total samples: {local_number_data[client_id]}")
 
     return net_dataidx_map, local_number_data, label_distribution
+
 
