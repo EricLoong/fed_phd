@@ -4,7 +4,6 @@ import os
 from torchvision.datasets import CelebA
 from torch.utils.data import Dataset
 from torchvision import transforms
-import torch
 
 
 # Custom Dataset to include CelebA attributes
@@ -22,14 +21,14 @@ class CelebADataset(Dataset):
 
     def __getitem__(self, idx):
         image, _ = self.celeba[idx]
-        attributes = self.attr.iloc[idx][['Male', 'Pale_Skin', 'Young']].values.astype(int)
-        attributes = torch.tensor(attributes, dtype=torch.float32)  # Convert attributes to tensor
-        return image, attributes
+        attributes = self.attr.iloc[idx][['Male', 'Pale_Skin', 'Young']]
+        class_label = create_classes(attributes)
+        return image, class_label
 
 
 def create_classes(attr):
     # Create a unique class based on binary encoding of the three attributes
-    return attr['Male'] * 4 + attr['Pale_Skin'] * 2 + attr['Young']
+    return int(attr['Male']) * 4 + int(attr['Pale_Skin']) * 2 + int(attr['Young'])
 
 
 def partition_data_indices_celeba(datadir, partition, n_nets, n_cls):
