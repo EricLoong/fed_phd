@@ -109,7 +109,9 @@ def partition_data_indices_celeba(datadir, partition, n_nets):
 
     # Ensure all data is assigned and there are no out-of-range indices
     for client_id, indices in net_dataidx_map.items():
-        print(f"Checking indices for Client {client_id}: {indices}")
+        out_of_range_indices = [idx for idx in indices if idx >= len(dataset) or idx < 0]
+        if out_of_range_indices:
+            print(f"Client {client_id} has out-of-range indices: {out_of_range_indices}")
         assert all(0 <= idx < len(y_train) for idx in indices), f"Client {client_id} has out-of-range indices!"
 
     # Verify no overlapping indices
@@ -117,8 +119,10 @@ def partition_data_indices_celeba(datadir, partition, n_nets):
     assert len(all_indices) == len(set(all_indices)), "Overlap detected in data indices!"
 
     # Print label distribution and number of samples for each client
+    total_samples = 0
     for client_id, labels in label_distribution.items():
         print(f"Client {client_id}: {labels}, Total samples: {len(net_dataidx_map[client_id])}")
+        total_samples += len(net_dataidx_map[client_id])
 
+    print(f"Total samples across all clients: {total_samples}")
     return net_dataidx_map, local_number_data, label_distribution
-
