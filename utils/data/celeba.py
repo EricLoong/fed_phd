@@ -2,14 +2,18 @@ import numpy as np
 import pandas as pd
 import os
 from torchvision.datasets import CelebA
-from torch.utils.data import DataLoader, Dataset
+from torch.utils.data import Dataset
 from torchvision import transforms
+
 
 # Custom Dataset to include CelebA attributes
 class CelebADataset(Dataset):
     def __init__(self, root, split, transform=None):
         self.celeba = CelebA(root, split=split, download=True, transform=transform)
-        self.attr = pd.read_csv(os.path.join(root, 'celeba', 'list_attr_celeba.csv'))
+        attr_file = os.path.join(root, 'celeba', 'list_attr_celeba.txt')
+
+        # Read the .txt file using pandas with the appropriate delimiter
+        self.attr = pd.read_csv(attr_file, delim_whitespace=True, header=1)
         self.attr = self.attr.replace(-1, 0)  # Replace -1 with 0 for binary attributes
 
     def __len__(self):
@@ -20,9 +24,11 @@ class CelebADataset(Dataset):
         attributes = self.attr.iloc[idx][['Male', 'Pale_Skin', 'Young']]
         return image, attributes
 
+
 def create_classes(attr):
     # Create a unique class based on binary encoding of the three attributes
     return attr['Male'] * 4 + attr['Pale_Skin'] * 2 + attr['Young']
+
 
 def partition_data_indices_celeba(datadir, partition, n_nets, n_cls):
     # Load CelebA dataset and attributes
@@ -61,7 +67,8 @@ def partition_data_indices_celeba(datadir, partition, n_nets, n_cls):
             for j in range(clients_per_class):
                 client_id = (i * clients_per_class + j) % n_nets
                 if client_id in net_dataidx_map:
-                    net_dataidx_map[client_id] = np.concatenate((net_dataidx_map[client_id], cls_idx[j * split_size:(j + 1) * split_size]))
+                    net_dataidx_map[client_id] = np.concatenate(
+                        (net_dataidx_map[client_id], cls_idx[j * split_size:(j + 1) * split_size]))
                 else:
                     net_dataidx_map[client_id] = cls_idx[j * split_size:(j + 1) * split_size]
                 local_number_data[client_id] = len(net_dataidx_map[client_id])
