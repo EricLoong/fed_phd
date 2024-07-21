@@ -1,6 +1,7 @@
 #!/bin/bash
 python main.py --dataset 'celeba' \
 --partition_method 'noniid-pathological' \
+--partition_alpha 1.0 \
 --batch_size 64 \
 --lr 2e-5 \
 --epochs 1 \

@@ -20,26 +20,29 @@ class CelebADataset(Dataset):
         return len(self.celeba)
 
     def __getitem__(self, idx):
+        if idx >= len(self.celeba):
+            raise IndexError(f"Index {idx} out of range for dataset of length {len(self.celeba)}")
+
         image, _ = self.celeba[idx]
-        attributes = self.attr.iloc[idx][['Male', 'Pale_Skin', 'Young']]
+        attributes = self.attr.iloc[idx][['Male', 'Young']]
         class_label = create_classes(attributes)
         return image, class_label
 
 
 def create_classes(attr):
-    # Create a unique class based on binary encoding of the three attributes
-    return int(attr['Male']) * 4 + int(attr['Pale_Skin']) * 2 + int(attr['Young'])
+    # Create a unique class based on binary encoding of the two attributes
+    return int(attr['Male']) * 2 + int(attr['Young'])
 
 
 def partition_data_indices_celeba(datadir, partition, n_nets, n_cls):
     # Load CelebA dataset and attributes
     transform = transforms.Compose([transforms.ToTensor()])
     dataset = CelebADataset(root=datadir, split='train', transform=transform)
-    y_train = dataset.attr[['Male', 'Pale_Skin', 'Young']].apply(create_classes, axis=1).values
+    y_train = dataset.attr[['Male', 'Young']].apply(create_classes, axis=1).values
 
     # Count samples for each class
-    class_counts = np.bincount(y_train, minlength=8)
-    for i in range(8):
+    class_counts = np.bincount(y_train, minlength=4)
+    for i in range(4):
         print(f"Class {i}: {class_counts[i]} samples")
 
     # Initialize the data index map, local data number map, and label distribution map
@@ -48,7 +51,7 @@ def partition_data_indices_celeba(datadir, partition, n_nets, n_cls):
     label_distribution = {client_id: [] for client_id in range(n_nets)}
 
     # Gather indices for each class
-    class_indices = [np.where(y_train == i)[0] for i in range(8)]  # 8 classes based on attributes
+    class_indices = [np.where(y_train == i)[0] for i in range(4)]  # 4 classes based on attributes
 
     if partition == 'iid':
         all_idxs = np.arange(len(y_train))
@@ -61,7 +64,7 @@ def partition_data_indices_celeba(datadir, partition, n_nets, n_cls):
             local_number_data[i] = len(net_dataidx_map[i])
     elif partition == 'noniid-pathological':
         # Calculate the number of clients per class, assuming each class must be represented in n_cls clients
-        clients_per_class = n_nets * n_cls // 8
+        clients_per_class = n_nets * n_cls // 4
         for i, cls_idx in enumerate(class_indices):
             np.random.shuffle(cls_idx)
             split_size = len(cls_idx) // clients_per_class
