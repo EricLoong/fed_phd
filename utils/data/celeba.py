@@ -68,11 +68,10 @@ def partition_data_indices_celeba(datadir, partition, n_nets, n_cls):
         for i, cls_idx in enumerate(class_indices):
             np.random.shuffle(cls_idx)
             split_size = len(cls_idx) // clients_per_class
-            for j in range(clients_per_class):
+            for j in range(int(clients_per_class)):
                 client_id = (i * clients_per_class + j) % n_nets
                 if client_id in net_dataidx_map:
-                    net_dataidx_map[client_id] = np.concatenate(
-                        (net_dataidx_map[client_id], cls_idx[j * split_size:(j + 1) * split_size]))
+                    net_dataidx_map[client_id] = np.concatenate((net_dataidx_map[client_id], cls_idx[j * split_size:(j + 1) * split_size]))
                 else:
                     net_dataidx_map[client_id] = cls_idx[j * split_size:(j + 1) * split_size]
                 local_number_data[client_id] = len(net_dataidx_map[client_id])
