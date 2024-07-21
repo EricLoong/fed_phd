@@ -31,7 +31,7 @@ def create_classes(attr):
     # Create a unique class based on binary encoding of the two attributes
     return int(attr['Male']) * 2 + int(attr['Young'])
 
-def partition_data_indices_celeba(datadir, n_nets):
+def partition_data_indices_celeba(datadir, partition, n_nets):
     # Load CelebA dataset and attributes
     transform = transforms.Compose([transforms.ToTensor()])
     dataset = CelebADataset(root=datadir, split='train', transform=transform)
@@ -40,35 +40,46 @@ def partition_data_indices_celeba(datadir, n_nets):
     # Count samples for each class
     class_counts = np.bincount(y_train, minlength=4)
 
-    # Ensure each client gets one label
-    assert n_nets >= 4, "Number of clients must be at least equal to the number of classes"
-
-    # Initialize the data index map and label distribution map
+    # Initialize the data index map, label distribution map, and local data number map
     net_dataidx_map = {i: [] for i in range(n_nets)}
     label_distribution = {i: [] for i in range(n_nets)}
     local_number_data = {i: 0 for i in range(n_nets)}
 
-    # Gather indices for each class
-    class_indices = [np.where(y_train == i)[0] for i in range(4)]
-
-    # Distribute classes to clients
-    client_id = 0
-    clients_per_class = n_nets // 4
-    extra_clients = n_nets % 4
-
-    for cls in range(4):
-        num_clients_for_class = clients_per_class + (1 if cls < extra_clients else 0)
-        num_samples_per_client = len(class_indices[cls]) // num_clients_for_class
-
-        for _ in range(num_clients_for_class):
+    if partition == 'iid':
+        all_indices = np.arange(len(y_train))
+        np.random.shuffle(all_indices)
+        num_samples_per_client = len(y_train) // n_nets
+        for client_id in range(n_nets):
             start_idx = client_id * num_samples_per_client
-            end_idx = start_idx + num_samples_per_client if client_id < num_clients_for_class - 1 else len(class_indices[cls])
-            assigned_samples = class_indices[cls][start_idx:end_idx]
-
+            end_idx = start_idx + num_samples_per_client if client_id < n_nets - 1 else len(y_train)
+            assigned_samples = all_indices[start_idx:end_idx]
             net_dataidx_map[client_id].extend(assigned_samples)
-            label_distribution[client_id].append(cls)
             local_number_data[client_id] = len(assigned_samples)
-            client_id += 1
+            label_distribution[client_id] = list(np.unique(y_train[assigned_samples]))
+    else:  # Non-IID
+        # Ensure each client gets one label
+        assert n_nets >= 4, "Number of clients must be at least equal to the number of classes"
+
+        # Gather indices for each class
+        class_indices = [np.where(y_train == i)[0] for i in range(4)]
+
+        client_id = 0
+        clients_per_class = n_nets // 4
+        extra_clients = n_nets % 4
+
+        for cls in range(4):
+            num_clients_for_class = clients_per_class + (1 if cls < extra_clients else 0)
+            num_samples_per_client = len(class_indices[cls]) // num_clients_for_class
+
+            for i in range(num_clients_for_class):
+                start_idx = i * num_samples_per_client
+                end_idx = start_idx + num_samples_per_client if i < num_clients_for_class - 1 else len(class_indices[cls])
+                assigned_samples = class_indices[cls][start_idx:end_idx]
+
+                net_dataidx_map[client_id].extend(assigned_samples)
+                label_distribution[client_id].append(cls)
+                local_number_data[client_id] = len(assigned_samples)
+                client_id += 1
 
     # Ensure all data is assigned and there are no out-of-range indices
     for client_id, indices in net_dataidx_map.items():
@@ -83,4 +94,3 @@ def partition_data_indices_celeba(datadir, n_nets):
         print(f"Client {client_id}: {labels}, Total samples: {len(net_dataidx_map[client_id])}")
 
     return net_dataidx_map, local_number_data, label_distribution
-
