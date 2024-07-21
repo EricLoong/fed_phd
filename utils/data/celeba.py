@@ -47,49 +47,55 @@ def partition_data_indices_celeba(datadir, partition, n_nets, n_cls):
     for i in range(4):
         print(f"Class {i}: {class_counts[i]} samples")
 
-    # Calculate the number of times each class should appear across all clients
-    class_occurrences = {cls: max(1, int(np.ceil(proportion * n_nets))) for cls, proportion in enumerate(class_counts / total_samples)}
+    # Calculate class proportions and occurrences
+    class_proportions = class_counts / total_samples
+    class_occurrences = {cls: max(1, int(np.ceil(proportion * n_nets))) for cls, proportion in enumerate(class_proportions)}
 
-    # Initialize the data index map and label distribution map
+    # Initialize the data index map, label distribution map, and class counts per client
     net_dataidx_map = {i: [] for i in range(n_nets)}
-    label_distribution = {client_id: [] for client_id in range(n_nets)}
+    label_distribution = {i: [] for i in range(n_nets)}
+    client_class_counts = {i: {cls: 0 for cls in range(4)} for i in range(n_nets)}
 
-    # Assign labels to clients according to class occurrences
+    # Assign labels to clients
     client_assignments = {i: [] for i in range(n_nets)}
-    client_counter = np.zeros(n_nets, dtype=int)
     for cls, occurrences in class_occurrences.items():
-        for _ in range(occurrences):
-            # Find the client with the minimum number of assignments to balance the distribution
-            client_id = np.argmin(client_counter)
+        assigned_clients = np.random.choice(n_nets, occurrences, replace=False)
+        for client_id in assigned_clients:
             client_assignments[client_id].append(cls)
             label_distribution[client_id].append(cls)
-            client_counter[client_id] += 1
 
-    # Debug: Print the label distribution
-    for client_id, labels in label_distribution.items():
-        print(f"Client {client_id}: {labels}")
+    # Ensure each client has exactly n_cls classes
+    for client_id in range(n_nets):
+        if len(client_assignments[client_id]) < n_cls:
+            additional_classes = np.random.choice([cls for cls in range(4) if cls not in client_assignments[client_id]], n_cls - len(client_assignments[client_id]), replace=False)
+            client_assignments[client_id].extend(additional_classes)
+            label_distribution[client_id].extend(additional_classes)
+        elif len(client_assignments[client_id]) > n_cls:
+            client_assignments[client_id] = client_assignments[client_id][:n_cls]
+            label_distribution[client_id] = label_distribution[client_id][:n_cls]
 
     # Assign samples to clients based on label distribution
     class_indices = [np.where(y_train == i)[0] for i in range(4)]
-    remaining_indices = {cls: list(indices) for cls, indices in enumerate(class_indices)}
     for client_id, classes in client_assignments.items():
         for cls in classes:
-            num_samples = class_counts[cls] // class_occurrences[cls]
-            if len(remaining_indices[cls]) >= num_samples:
-                assigned_samples = remaining_indices[cls][:num_samples]
-                remaining_indices[cls] = remaining_indices[cls][num_samples:]
-            else:
-                assigned_samples = remaining_indices[cls]
-                remaining_indices[cls] = []
+            num_samples = len(class_indices[cls]) // class_occurrences[cls]
+            assigned_samples = class_indices[cls][:num_samples]
             net_dataidx_map[client_id].extend(assigned_samples)
+            client_class_counts[client_id][cls] += len(assigned_samples)
+            class_indices[cls] = class_indices[cls][num_samples:]
 
     # Assign remaining samples to clients
-    for cls, indices in remaining_indices.items():
-        if len(indices) > 0:
-            for idx, client_id in enumerate(client_assignments.keys()):
-                if cls in client_assignments[client_id]:
-                    net_dataidx_map[client_id].extend(indices)
-                    break
+    for cls, indices in enumerate(class_indices):
+        remaining_clients = [client_id for client_id, assigned_classes in client_assignments.items() if cls in assigned_classes]
+        idx = 0
+        while len(indices) > 0 and idx < len(remaining_clients):
+            client_id = remaining_clients[idx]
+            net_dataidx_map[client_id].append(indices[0])
+            client_class_counts[client_id][cls] += 1
+            indices = indices[1:]
+            idx += 1
+            if idx == len(remaining_clients):
+                idx = 0
 
     # Ensure all data is assigned and there are no out-of-range indices
     for client_id, indices in net_dataidx_map.items():
@@ -106,8 +112,10 @@ def partition_data_indices_celeba(datadir, partition, n_nets, n_cls):
         print(f"Overlapping indices: {overlapping_indices}")
     assert len(all_indices) == len(set(all_indices)), "Overlap detected in data indices!"
 
-    # Print label distribution for each client
+    # Print label distribution and number of samples for each client
     for client_id, labels in label_distribution.items():
         print(f"Client {client_id}: {labels}, Total samples: {len(net_dataidx_map[client_id])}")
+        print(f"Client {client_id} sample distribution: {client_class_counts[client_id]}")
 
     return net_dataidx_map, label_distribution
+
