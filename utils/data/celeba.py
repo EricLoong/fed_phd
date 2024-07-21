@@ -35,6 +35,9 @@ def create_classes(attr):
 
 
 def partition_data_indices_celeba(datadir, partition, n_nets, n_cls):
+    # Ensure n_cls is an integer
+    n_cls = int(n_cls)
+
     # Load CelebA dataset and attributes
     transform = transforms.Compose([transforms.ToTensor()])
     dataset = CelebADataset(root=datadir, split='train', transform=transform)
