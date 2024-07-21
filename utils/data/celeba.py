@@ -108,3 +108,7 @@ def partition_data_indices_celeba(datadir, partition, n_nets, n_cls):
     return net_dataidx_map, local_number_data, label_distribution
 
 
+what the fuck are you doing. You should first decide the client contains which labels according to the proportion of
+For instance, if the class 0,1,2,3 has sample size 5000,10000,5000,10000, then the 1 and 3 has 1/3 to each client and 0 and 2 has only 1/6.
+After this, you would have the label distribution that tell you which class should be into this client. Then, just calculate the class appears how many times for all the clients.Non
+Divided the total sampels of the class by the occurance. For example 10000/10, if class 0 occurs 10 times within 20 clients. I think this will not overlap!!!
