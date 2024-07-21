@@ -44,7 +44,7 @@ def dataset_wrapper(dataset, data_dir, image_size, augment_horizontal_flip=True,
         print(colored('Successfully loaded {} images!'.format(len(dataSet)), info_color))
     else:
         dataset = dataset.lower()
-        assert dataset in ['cifar10', 'celeba'], "Dataset must be 'cifar10', 'celeba' or a valid directory path."
+        assert dataset in ['cifar10', 'celeba-hq-resized'], "Dataset must be 'cifar10', 'celeba-hq-resized' or a valid directory path."
         print(colored('Loading {} dataset'.format(dataset), info_color))
         if dataset == 'cifar10':
             train_set = CIFAR10(root=data_dir, train=True, download=True, transform=transform)
