@@ -13,7 +13,6 @@ class CelebaHQ(Dataset):
         self.transform = transform
         self.zip_file_path = os.path.join(self.root, 'celeba_images.zip')
         self.image_dir = 'images'
-        self.attr_file = os.path.join(self.root, 'list_attr_celeba.txt')
 
         with zipfile.ZipFile(self.zip_file_path, 'r') as z:
             self.image_ids = [info.filename for info in z.infolist() if info.filename.startswith(self.image_dir)]
