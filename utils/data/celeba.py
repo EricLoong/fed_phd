@@ -60,7 +60,6 @@ def partition_data_indices_celeba(datadir, partition, n_nets):
     if partition == 'iid':
         all_indices = np.arange(len(y_train))
         np.random.shuffle(all_indices)
-        print('Maximum indices:', max(all_indices))
         num_samples_per_client = len(y_train) // n_nets
         for client_id in range(n_nets):
             start_idx = client_id * num_samples_per_client
@@ -77,6 +76,7 @@ def partition_data_indices_celeba(datadir, partition, n_nets):
         client_id = 0
         for cls in range(4):
             class_indices = np.where(y_train == cls)[0]
+            print('Maximum indices:', max(class_indices))
             np.random.shuffle(class_indices)
             num_clients = num_clients_per_class[cls]
             num_samples_per_client = len(class_indices) // num_clients
