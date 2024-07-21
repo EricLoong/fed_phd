@@ -4,6 +4,7 @@ import os
 from torchvision.datasets import CelebA
 from torch.utils.data import Dataset
 from torchvision import transforms
+import torch
 
 
 # Custom Dataset to include CelebA attributes
@@ -21,7 +22,8 @@ class CelebADataset(Dataset):
 
     def __getitem__(self, idx):
         image, _ = self.celeba[idx]
-        attributes = self.attr.iloc[idx][['Male', 'Pale_Skin', 'Young']]
+        attributes = self.attr.iloc[idx][['Male', 'Pale_Skin', 'Young']].values.astype(int)
+        attributes = torch.tensor(attributes, dtype=torch.float32)  # Convert attributes to tensor
         return image, attributes
 
 
