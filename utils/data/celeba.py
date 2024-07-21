@@ -69,21 +69,23 @@ def partition_data_indices_celeba(datadir, partition, n_nets, n_cls):
     for i in range(n_nets):
         assigned_classes = np.random.choice(4, n_cls, replace=False)
         for cls in assigned_classes:
-            net_dataidx_map[i].extend(class_assignment[cls][i])
-            local_number_data[i] += len(class_assignment[cls][i])
-            label_distribution[i].append(cls)
-
-    # Verify no overlapping indices
-    all_indices = [idx for indices in net_dataidx_map.values() for idx in indices]
-    assert len(all_indices) == len(set(all_indices)), "Overlap detected in data indices!"
+            if len(class_assignment[cls][i]) > 0:
+                net_dataidx_map[i].extend(class_assignment[cls][i])
+                local_number_data[i] += len(class_assignment[cls][i])
+                label_distribution[i].append(cls)
 
     # Ensure all data is assigned and there are no out-of-range indices
     for client_id, indices in net_dataidx_map.items():
         assert all(0 <= idx < len(dataset) for idx in indices), f"Client {client_id} has out-of-range indices!"
+
+    # Verify no overlapping indices
+    all_indices = [idx for indices in net_dataidx_map.values() for idx in indices]
+    assert len(all_indices) == len(set(all_indices)), "Overlap detected in data indices!"
 
     # Print label distribution for each client
     for client_id, labels in label_distribution.items():
         print(f"Client {client_id}: {labels}, Total samples: {local_number_data[client_id]}")
 
     return net_dataidx_map, local_number_data, label_distribution
+
 
