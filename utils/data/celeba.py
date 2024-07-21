@@ -50,6 +50,7 @@ def partition_data_indices_celeba(datadir, partition, n_nets, n_cls):
 
     # Initialize the data index map and label distribution map
     net_dataidx_map = {i: [] for i in range(n_nets)}
+    local_number_data = {i: 0 for i in range(n_nets)}
     label_distribution = {client_id: [] for client_id in range(n_nets)}
 
     # Gather indices for each class
@@ -69,6 +70,7 @@ def partition_data_indices_celeba(datadir, partition, n_nets, n_cls):
             assigned_samples = cls_indices[:num_samples]
             class_indices[cls] = cls_indices[num_samples:]  # Remove assigned samples from class indices
             net_dataidx_map[i].extend(assigned_samples)
+            local_number_data[i] += len(assigned_samples)
             label_distribution[i].append(cls)
 
     # Ensure all data is assigned
@@ -78,11 +80,10 @@ def partition_data_indices_celeba(datadir, partition, n_nets, n_cls):
             break
         additional_sample = remaining_indices.pop(0)
         net_dataidx_map[i].append(additional_sample)
+        local_number_data[i] += 1
 
     # Print label distribution for each client
     for client_id, labels in label_distribution.items():
         print(f"Client {client_id}: {labels}")
 
-    return net_dataidx_map, label_distribution
-
-
+    return net_dataidx_map, local_number_data, label_distribution
