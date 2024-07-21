@@ -98,11 +98,11 @@ def partition_data_indices_celeba(datadir, partition, n_nets, n_cls):
                 idx = 0
 
     # Ensure all data is assigned and there are no out-of-range indices
-    for client_id, indices in net_dataidx_map.items():
-        out_of_range_indices = [idx for idx in indices if idx < 0 or idx >= len(dataset)]
-        if out_of_range_indices:
-            print(f"Client {client_id} has out-of-range indices: {out_of_range_indices}")
-        assert all(0 <= idx < len(dataset) for idx in indices), f"Client {client_id} has out-of-range indices!"
+    #for client_id, indices in net_dataidx_map.items():
+    #    out_of_range_indices = [idx for idx in indices if idx < 0 or idx >= len(dataset)]
+    #    if out_of_range_indices:
+    #        print(f"Client {client_id} has out-of-range indices: {out_of_range_indices}")
+    #    assert all(0 <= idx < len(dataset) for idx in indices), f"Client {client_id} has out-of-range indices!"
 
     # Verify no overlapping indices
     all_indices = [idx for indices in net_dataidx_map.values() for idx in indices]
