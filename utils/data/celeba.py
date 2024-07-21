@@ -71,22 +71,25 @@ def partition_data_indices_celeba(datadir, partition, n_nets, n_cls):
 
     # Assign samples to clients based on label distribution
     class_indices = [np.where(y_train == i)[0] for i in range(4)]
+    remaining_indices = {cls: list(indices) for cls, indices in enumerate(class_indices)}
     for client_id, classes in client_assignments.items():
         for cls in classes:
-            num_samples = len(class_indices[cls]) // class_occurrences[cls]
-            assigned_samples = class_indices[cls][:num_samples]
+            num_samples = class_counts[cls] // class_occurrences[cls]
+            if len(remaining_indices[cls]) >= num_samples:
+                assigned_samples = remaining_indices[cls][:num_samples]
+                remaining_indices[cls] = remaining_indices[cls][num_samples:]
+            else:
+                assigned_samples = remaining_indices[cls]
+                remaining_indices[cls] = []
             net_dataidx_map[client_id].extend(assigned_samples)
-            class_indices[cls] = class_indices[cls][num_samples:]
 
-    # Assign remaining samples to the clients in a round-robin manner
-    for cls, indices in enumerate(class_indices):
-        remaining_clients = [client_id for client_id, classes in client_assignments.items() if cls in classes]
-        while len(indices) > 0:
-            for client_id in remaining_clients:
-                if len(indices) == 0:
+    # Assign remaining samples to clients
+    for cls, indices in remaining_indices.items():
+        if len(indices) > 0:
+            for idx, client_id in enumerate(client_assignments.keys()):
+                if cls in client_assignments[client_id]:
+                    net_dataidx_map[client_id].extend(indices)
                     break
-                net_dataidx_map[client_id].append(indices[0])
-                indices = indices[1:]
 
     # Ensure all data is assigned and there are no out-of-range indices
     for client_id, indices in net_dataidx_map.items():
@@ -108,5 +111,3 @@ def partition_data_indices_celeba(datadir, partition, n_nets, n_cls):
         print(f"Client {client_id}: {labels}, Total samples: {len(net_dataidx_map[client_id])}")
 
     return net_dataidx_map, label_distribution
-
-
