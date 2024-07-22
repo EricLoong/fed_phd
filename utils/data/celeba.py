@@ -5,7 +5,6 @@ from math import ceil
 from torchvision.datasets import CelebA
 from torch.utils.data import Dataset
 from torchvision import transforms
-import torch
 
 
 # Custom Dataset to include CelebA attributes
@@ -34,7 +33,7 @@ class CelebADataset(Dataset):
         image, _ = self.celeba[idx]
         attributes = self.attr.iloc[idx][['Male', 'Young']]
         class_label = create_classes(attributes)
-        return image, torch.tensor(class_label, dtype=torch.long)
+        return image, class_label
 
 
 def create_classes(attr):
@@ -135,4 +134,3 @@ def partition_data_indices_celeba(datadir, partition, n_nets):
     print(f"Total samples across all clients: {total_samples}")
     assert total_samples == dataset_length, "Total samples do not match dataset length!"
     return net_dataidx_map, local_number_data, label_distribution
-
