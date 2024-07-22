@@ -154,11 +154,10 @@ class Trainer:
 
             for batch_idx, data in enumerate(self.dataLoader):  # Iterate through all batches
                 self.optimizer.zero_grad()
-                if isinstance(data, tuple):
+                if isinstance(data, (tuple, list)):
                     # Dataset with labels (e.g., CIFAR10)
                     image, _ = data
                 else:
-                    # Dataset without labels (e.g., Celeba)
                     image = data
 
                 image = image.to(self.device)

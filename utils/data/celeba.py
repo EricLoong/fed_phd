@@ -7,7 +7,6 @@ from torch.utils.data import Dataset
 from torchvision import transforms
 
 
-# Custom Dataset to include CelebA attributes
 class CelebADataset(Dataset):
     def __init__(self, root, split, transform=None):
         self.celeba = CelebA(root, split=split, download=True, transform=transform)
@@ -33,12 +32,13 @@ class CelebADataset(Dataset):
         image, _ = self.celeba[idx]
         attributes = self.attr.iloc[idx][['Male', 'Young']]
         class_label = create_classes(attributes)
-        return (image, class_label)
-
+        return image, class_label
 
 def create_classes(attr):
     # Create a unique class based on binary encoding of the two attributes
     return int(attr['Male']) * 2 + int(attr['Young'])
+
+
 
 
 def adjust_client_distribution(client_counts, total_clients):
