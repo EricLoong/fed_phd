@@ -91,9 +91,6 @@ def partition_data_indices_celeba(datadir, partition, n_nets):
                 end_idx = start_idx + num_samples_per_client if i < num_clients - 1 else len(class_indices)
                 assigned_samples = class_indices[start_idx:end_idx]
 
-                # Debugging: Check indices
-                print(f"Client {client_id}, Class {cls}, Start Index: {start_idx}, End Index: {end_idx}, Assigned Samples: {len(assigned_samples)}")
-
                 if len(assigned_samples) == 0:
                     continue
 
@@ -125,4 +122,6 @@ def partition_data_indices_celeba(datadir, partition, n_nets):
         total_samples += len(net_dataidx_map[client_id])
 
     print(f"Total samples across all clients: {total_samples}")
+    assert total_samples == dataset_length, "Total samples do not match dataset length!"
     return net_dataidx_map, local_number_data, label_distribution
+
