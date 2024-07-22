@@ -16,6 +16,9 @@ class CelebADataset(Dataset):
         self.attr = pd.read_csv(attr_file, delim_whitespace=True, header=1)
         self.attr = self.attr.replace(-1, 0)  # Replace -1 with 0 for binary attributes
 
+        # Filter attributes to match the split
+        self.attr = self.attr.loc[self.celeba.identity]
+
     def __len__(self):
         return len(self.celeba)
 
