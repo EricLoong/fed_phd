@@ -6,6 +6,7 @@ from torchvision.datasets import CelebA
 from torch.utils.data import Dataset
 from torchvision import transforms
 
+
 # Custom Dataset to include CelebA attributes
 class CelebADataset(Dataset):
     def __init__(self, root, split, transform=None):
@@ -16,8 +17,11 @@ class CelebADataset(Dataset):
         self.attr = pd.read_csv(attr_file, delim_whitespace=True, header=1)
         self.attr = self.attr.replace(-1, 0)  # Replace -1 with 0 for binary attributes
 
-        # Filter attributes to match the split
-        self.attr = self.attr.loc[self.celeba.identity]
+        # Ensure the attributes correspond to the current split
+        split_file = os.path.join(root, 'celeba', 'list_eval_partition.txt')
+        split_data = pd.read_csv(split_file, delim_whitespace=True, header=None, index_col=0)
+        split_indices = split_data[split_data[1] == {'train': 0, 'valid': 1, 'test': 2}[split]].index
+        self.attr = self.attr.loc[split_indices]
 
     def __len__(self):
         return len(self.celeba)
@@ -31,9 +35,11 @@ class CelebADataset(Dataset):
         class_label = create_classes(attributes)
         return image, class_label
 
+
 def create_classes(attr):
     # Create a unique class based on binary encoding of the two attributes
     return int(attr['Male']) * 2 + int(attr['Young'])
+
 
 def adjust_client_distribution(client_counts, total_clients):
     while sum(client_counts) != total_clients:
@@ -45,6 +51,7 @@ def adjust_client_distribution(client_counts, total_clients):
             min_index = np.argmin(client_counts)
             client_counts[min_index] += 1
     return client_counts
+
 
 def partition_data_indices_celeba(datadir, partition, n_nets):
     # Load CelebA dataset and attributes
