@@ -33,7 +33,7 @@ class CelebADataset(Dataset):
         image, _ = self.celeba[idx]
         attributes = self.attr.iloc[idx][['Male', 'Young']]
         class_label = create_classes(attributes)
-        return image, class_label
+        return (image, class_label)
 
 
 def create_classes(attr):

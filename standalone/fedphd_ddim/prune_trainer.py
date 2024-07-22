@@ -158,7 +158,7 @@ class Trainer:
                     # Dataset with labels (e.g., CIFAR10)
                     image, _ = data
                 else:
-                    # Dataset without labels (e.g., CelebaHQ)
+                    # Dataset without labels (e.g., Celeba)
                     image = data
 
                 image = image.to(self.device)
