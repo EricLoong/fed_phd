@@ -1,12 +1,12 @@
 #!/bin/bash
-python main.py --dataset 'cifar10' \
+python main.py --dataset 'cifar10-standard' \
 --partition_method 'iid' \
 --batch_size 128 \
 --lr 2e-4 \
 --epochs 1 \
 --client_num_in_total 20 --frac 0.2 \
 --sample_every 500 \
---comm_round 20000 \
+--comm_round 10000 \
 --seed 2023 \
 --save \
 --calculate_fid \

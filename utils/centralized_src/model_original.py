@@ -89,10 +89,10 @@ class downSample(nn.Module):
 
         self.dim, self.dim_out = dim_in, dim_in
 
-        self.downsameple = nn.Conv2d(dim_in, dim_in, kernel_size=(3, 3), stride=(2, 2), padding=1)
+        self.downsample = nn.Conv2d(dim_in, dim_in, kernel_size=(3, 3), stride=(2, 2), padding=1)
 
     def forward(self, x):
-        return self.downsameple(x)
+        return self.downsample(x)
 
 
 class upSample(nn.Module):

@@ -25,6 +25,7 @@ base_path = set_directory_to_fed_diff()
 
 from utils.centralized_src.model_original import Unet
 from utils.centralized_src.diffusion import GaussianDiffusion, DDIM_Sampler
+from utils.centralized_src.diffusers_unet import unet_cifar10_standard
 from utils.centralized_src.tools import Config,setup_fid_scorer,setup_inception_scorer
 from utils.data.cifar10 import partition_data_indices_cifar10
 from utils.data.celeba import partition_data_indices_celeba
@@ -150,6 +151,9 @@ def load_model(args):
         image_size = 64
         unet_celeba = Unet(dim=128,dim_multiply=(1,2,2,2),image_size=image_size,attn_resolutions=(16,),dropout=0.0,num_res_blocks=2)
         diffusion = GaussianDiffusion(unet_celeba, image_size=image_size).to(args.device)
+    elif args.dataset == "cifar10-standard":
+        image_size = 32
+        diffusion = GaussianDiffusion(unet_cifar10_standard, image_size=image_size).to(args.device)
     else:
         raise ValueError(f"Dataset {args.dataset} not supported")
     model = diffusion.to(args.device)
