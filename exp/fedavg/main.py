@@ -140,7 +140,8 @@ def load_model(args):
         diffusion = GaussianDiffusion(unet_cifar10, image_size=image_size).to(args.device)
     elif args.dataset == "cifar10-standard":
         image_size = 32
-        diffusion = GaussianDiffusion(unet_cifar10_standard, image_size=image_size).to(args.device)
+        unet_cifar10 = unet_cifar10_standard.to(args.device)
+        diffusion = GaussianDiffusion(unet_cifar10, image_size=image_size).to(args.device)
     else:
         raise ValueError(f"Dataset {args.dataset} not supported")
     model = diffusion.to(args.device)
