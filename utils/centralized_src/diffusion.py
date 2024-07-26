@@ -15,7 +15,7 @@ class GaussianDiffusion(nn.Module):
         """
         super().__init__()
         self.unet = model
-        self.channel = self.unet.channel
+        self.channel = self.unet.out_channels
         self.device = self.unet.device
         self.image_size = image_size
         self.time_step = time_step
