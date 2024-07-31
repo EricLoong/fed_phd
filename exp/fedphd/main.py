@@ -282,6 +282,7 @@ if __name__ == "__main__":
         data_info = partition_data_indices_celeba(datadir=args.data_dir, partition=args.partition_method,
                                                   n_nets=args.client_num_in_total)
     if args.train_scratch:
+        print("Training from scratch")
         model = load_model(args, out_unet=True)
         train_pruned_model(model,args,logger)
     else:

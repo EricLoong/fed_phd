@@ -14,5 +14,5 @@ python main.py --dataset 'cifar10' \
 --aggr_freq 5 \
 --balance_agg_a 20000 \
 --num_edge_servers 2 \
---sparse_training \
+--train_scratch \
 --tqdm
