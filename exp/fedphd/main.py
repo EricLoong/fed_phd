@@ -6,16 +6,7 @@ import numpy as np
 import torch
 import copy
 import random
-# from utils.centralized_src.model_original import Unet
-from utils.centralized_src.diffusion import GaussianDiffusion, DDIM_Sampler
-from utils.centralized_src.diffusers_unet import unet_cifar10_standard, unet_celeba_standard
-from utils.centralized_src.tools import Config, setup_fid_scorer, setup_inception_scorer
-from utils.data.cifar10 import partition_data_indices_cifar10
-from utils.data.celeba import partition_data_indices_celeba
-from standalone.fedphd_ddim.fedphd_api import fedphd_api
-from standalone.fedphd_ddim.prune_trainer import Trainer
-from datetime import datetime
-from standalone.fedphd_ddim.structure_prune import group_norm_prune
+
 
 def set_directory_to_fed_diff():
     pwd = os.getcwd()
@@ -34,7 +25,16 @@ def set_directory_to_fed_diff():
 
 base_path = set_directory_to_fed_diff()
 
-
+# from utils.centralized_src.model_original import Unet
+from utils.centralized_src.diffusion import GaussianDiffusion, DDIM_Sampler
+from utils.centralized_src.diffusers_unet import unet_cifar10_standard, unet_celeba_standard
+from utils.centralized_src.tools import Config, setup_fid_scorer, setup_inception_scorer
+from utils.data.cifar10 import partition_data_indices_cifar10
+from utils.data.celeba import partition_data_indices_celeba
+from standalone.fedphd_ddim.fedphd_api import fedphd_api
+from standalone.fedphd_ddim.prune_trainer import Trainer
+from datetime import datetime
+from standalone.fedphd_ddim.structure_prune import group_norm_prune
 def logger_config(log_path, logging_name):
     logger = logging.getLogger(logging_name)
     logger.setLevel(level=logging.DEBUG)
