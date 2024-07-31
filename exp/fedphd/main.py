@@ -299,8 +299,9 @@ if __name__ == "__main__":
         args.comm_round = args.st_rounds
         ddim_samplers = setup_ddim_sampler(args, diffusion_model)  # Just one sampler in defalt
         fid_scorer = setup_fid_scorer(args, image_size=diffusion_model.image_size)
+        inception_scorer = setup_inception_scorer(args, image_size=diffusion_model.image_size)
         global_model_trainer = setup_trainer(args, diffusion_model, fid_scorer=fid_scorer, ddim_samplers=ddim_samplers,
-                                             logger=logger)
+                                             inception_scorer=inception_scorer, logger=logger)
         logger.info(diffusion_model)
 
         data_info = partition_data_indices_cifar10(datadir=args.data_dir, partition=args.partition_method,
