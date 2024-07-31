@@ -71,6 +71,9 @@ def group_norm_prune(args, model, logger):
     for g in pruner.step(interactive=True):
         g.prune()
 
+    prune_and_adjust_attention_layers(model)
+    adjust_static_layers(model)
+
     macs, nparams = tp.utils.count_ops_and_params(model, example_inputs)
     model.to(args.device)
     logger.info(
