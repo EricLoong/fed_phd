@@ -58,6 +58,8 @@ class Trainer:
         self.ddpm_fid_score_estimate_every = ddpm_fid_score_estimate_every
         self.cal_fid = args.calculate_fid
         self.cal_is = args.calculate_is
+        self.sparse_training = args.sparse_training
+        self.lambda_sparse = args.lambda_sparse
         self.tqdm_sampler_name = None
         self.tensorboard_name = None
         self.writer = None
@@ -142,7 +144,6 @@ class Trainer:
     def set_id(self, trainer_id):
         self.id = trainer_id
 
-
     def train(self, round_idx):
         epochs = self.args.epochs
         for epoch in range(epochs):
@@ -162,6 +163,12 @@ class Trainer:
 
                 image = image.to(self.device)
                 loss = self.diffusion_model(image)
+
+                # Conditionally add group norm regularization
+                if self.sparse_training:
+                    reg_loss = self.group_norm_regularization(self.diffusion_model)
+                    loss += self.lambda_sparse * reg_loss
+
                 loss.backward()
                 nn.utils.clip_grad_norm_(self.diffusion_model.parameters(), self.max_grad_norm)
                 self.optimizer.step()
@@ -182,6 +189,14 @@ class Trainer:
             if self.args.central_train:
                 self.ddim_image_generation(epoch)
                 self.ddim_fid_calculation(epoch)
+
+    def group_norm_regularization(self, model, p=2):
+        group_norm = 0.0
+        for name, param in model.named_parameters():
+            if 'weight' in name and param.requires_grad:
+                # Assume groups are defined by the first dimension (e.g., channels in Conv2d)
+                group_norm += torch.norm(param.view(param.size(0), -1), p)
+        return group_norm
 
     def ddim_image_generation(self, current_step):
         with torch.no_grad():

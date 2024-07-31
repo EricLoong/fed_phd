@@ -72,8 +72,11 @@ class GaussianDiffusion(nn.Module):
         t = torch.randint(0, self.time_step, (b,), device=img.device).long()  # (b, )
         noise = torch.randn_like(img)  # corresponds to epsilon in (14)
         noised_image = self.q_sample(img, t, noise)  # argument inside epsilon_theta
-        predicted_noise = self.unet(noised_image, t)  # epsilon_theta in (14)
+        predicted_noise = self.unet(noised_image, t).sample  # epsilon_theta in (14)
 
+        # Print sizes to debug
+        #print(f"Noise size: {noise.size()}")
+        #print(f"Predicted noise size: {predicted_noise.size()}")
         if self.loss_type == 'l1':
             loss = F.l1_loss(noise, predicted_noise)
         elif self.loss_type == 'l2':
@@ -106,7 +109,7 @@ class GaussianDiffusion(nn.Module):
         :return: de-noised image at time step t-1
         """
         batched_time = torch.full((xt.shape[0],), t, device=self.device, dtype=torch.long)
-        pred_noise = self.unet(xt, batched_time)  # corresponds to epsilon_{theta}
+        pred_noise = self.unet(xt, batched_time).sample  # corresponds to epsilon_{theta}
         if clip:
             x0 = self.sqrt_recip_alpha_bar[t] * xt - self.sqrt_recip_alpha_bar_min_1[t] * pred_noise
             x0.clamp_(-1., 1.)
@@ -241,7 +244,7 @@ class DDIM_Sampler(nn.Module):
         """
         t = self.tau[i]
         batched_time = torch.full((xt.shape[0],), t, device=self.device, dtype=torch.long)
-        pred_noise = model.unet(xt, batched_time)  # corresponds to epsilon_{theta}
+        pred_noise = model.unet(xt, batched_time).sample  # corresponds to epsilon_{theta}
         x0 = model.sqrt_recip_alpha_bar[t] * xt - model.sqrt_recip_alpha_bar_min_1[t] * pred_noise
         if clip:
             x0.clamp_(-1., 1.)
