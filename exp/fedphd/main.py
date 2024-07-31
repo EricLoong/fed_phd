@@ -167,18 +167,19 @@ def load_model(args,out_unet=False):
     if args.dataset == "celeba":
         image_size = 64
         unet = unet_celeba_standard
+        unet.to(args.device)
         # unet_celeba = Unet(dim=128,dim_multiply=(1,2,2,2),image_size=image_size,attn_resolutions=(16,),dropout=0.0,num_res_blocks=2)
         diffusion = GaussianDiffusion(unet, image_size=image_size).to(args.device)
     elif args.dataset == "cifar10":
         image_size = 32
         unet = unet_cifar10_standard
+        unet.to(args.device)
         diffusion = GaussianDiffusion(unet, image_size=image_size).to(args.device)
     else:
         raise ValueError(f"Dataset {args.dataset} not supported")
 
     model = diffusion.to(args.device)
     if out_unet:
-        unet.to(args.device)
         return unet
     else:
         return model
@@ -289,6 +290,7 @@ if __name__ == "__main__":
         # Sparse training and then fine-tune the pruned model
         # ensure sparse_train is True in your args
         diffusion_model = load_model(args)
+        diffusion_model=diffusion_model.to(device)
         num_params = num_params(diffusion_model)
         logger.info("Model num of params:{}".format(num_params))
         # Initail sparse training
