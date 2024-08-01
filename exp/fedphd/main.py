@@ -134,7 +134,7 @@ def add_args(parser):
                                                                      'regularization')
     parser.add_argument('--pruning_ratio', type=float, default=0.2, help='Structure pruning ratio')
     # Sparse training is not supported by train from scratch.
-    parser.add_argument('--lambda_sparse', type=float, default=0.001, help='Lambda for sparse training regularization')
+    parser.add_argument('--lambda_sparse', type=float, default=0.0001, help='Lambda for sparse training regularization')
     parser.add_argument('--st_rounds', type=int, default=500, help='Intial rounds of sparse training')
     return parser
 
@@ -316,7 +316,10 @@ if __name__ == "__main__":
         print('Load sparse model state dict')
         model.load_state_dict(unet_state_dict)
         model.to(device)
+        # De-active the sparse training
+        args.sparse_training = False
         args.comm_round = rest_rounds
+
         train_pruned_model(model,args,logger)
 
 

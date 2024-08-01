@@ -6,7 +6,7 @@ python main.py --dataset 'celeba' \
 --epochs 1 \
 --client_num_in_total 20 --frac 0.2 \
 --sample_every 500 \
---comm_round 20000 \
+--comm_round 5000 \
 --seed 2023 \
 --save \
 --calculate_fid \
