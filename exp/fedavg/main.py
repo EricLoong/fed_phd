@@ -25,7 +25,7 @@ base_path = set_directory_to_fed_diff()
 
 from utils.centralized_src.model_original import Unet
 from utils.centralized_src.diffusion import GaussianDiffusion, DDIM_Sampler
-from utils.centralized_src.diffusers_unet import unet_cifar10_standard
+from utils.centralized_src.diffusers_unet import unet_cifar10_standard, unet_celeba_standard
 from utils.centralized_src.tools import Config,setup_fid_scorer
 from utils.data.cifar10 import partition_data_indices_cifar10
 from standalone.fedavg_ddim.fedavg_api import fedavg_api
@@ -135,8 +135,8 @@ def setup_ddim_sampler(args, diffusion_model):
 
 def load_model(args):
     if args.dataset == "celeba":
-        image_size = 32
-        unet_cifar10 = Unet(dim=128,dim_multiply=(1,2,2,2),image_size=image_size,attn_resolutions=(16,),dropout=0.1,num_res_blocks=2)
+        image_size = 64
+        unet_cifar10 = unet_celeba_standard.to(args.device)
         diffusion = GaussianDiffusion(unet_cifar10, image_size=image_size).to(args.device)
     elif args.dataset == "cifar10":
         image_size = 32
