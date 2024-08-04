@@ -134,7 +134,7 @@ def add_args(parser):
                                                                      'regularization')
     parser.add_argument('--pruning_ratio', type=float, default=0.2, help='Structure pruning ratio')
     # Sparse training is not supported by train from scratch.
-    parser.add_argument('--lambda_sparse', type=float, default=0.0001, help='Lambda for sparse training regularization')
+    parser.add_argument('--lambda_sparse', type=float, default=0.00001, help='Lambda for sparse training regularization')
     parser.add_argument('--st_rounds', type=int, default=500, help='Intial rounds of sparse training')
     return parser
 
