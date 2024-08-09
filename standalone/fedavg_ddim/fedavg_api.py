@@ -58,7 +58,7 @@ class fedavg_api(object):
                 # update dataset
                 client = self.client_list[cur_clnt]
                 # update meta components in personal network
-                w_per = client.train(copy.deepcopy(w_global), round_idx)  # Get both model and EMA parameters
+                w_per = client.train(copy.deepcopy(w_global), round_idx)
                 w_locals.append((client.get_sample_number(), copy.deepcopy(w_per)))
 
             # update global meta weights

@@ -145,6 +145,8 @@ class Trainer:
 
     def train(self, round_idx):
         epochs = self.args.epochs
+        global_params = copy.deepcopy(self.diffusion_model.parameters()) # Store the global parameters
+
         for epoch in range(epochs):
             self.diffusion_model.train()
             epoch_loss = 0  # Initialize variable to accumulate loss
@@ -162,6 +164,15 @@ class Trainer:
 
                 image = image.to(self.device)
                 loss = self.diffusion_model(image)
+
+                if self.args.prox:
+                    # Calculate proximal term
+                    prox_loss = 0.0
+                    for param, global_param in zip(self.diffusion_model.parameters(), global_params):
+                        prox_loss += (param - global_param).norm(2)
+                    prox_term = (self.args.mu / 2.0) * prox_loss
+                    loss += prox_term
+
                 loss.backward()
                 nn.utils.clip_grad_norm_(self.diffusion_model.parameters(), self.max_grad_norm)
                 self.optimizer.step()
@@ -170,18 +181,19 @@ class Trainer:
 
                 epoch_loss += loss.item()  # Accumulate the loss
                 num_batches += 1
-                # if batch_idx % 10 == 0:
-                #    self.logger.info(f"Batch {batch_idx}: Loss {loss.item()}")
 
             # Calculate the average loss for the epoch
             average_loss = epoch_loss / num_batches
 
-            # if round_idx % self.args.sample_every == 0:
             self.logger.info(f"Round {round_idx} Epoch {epoch} Average Loss: {average_loss}")
+
 
             if self.args.central_train:
                 self.ddim_image_generation(epoch)
                 self.ddim_fid_calculation(epoch)
+
+        torch.cuda.empty_cache()
+
 
     def ddim_image_generation(self, current_step):
         with torch.no_grad():
