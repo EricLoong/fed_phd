@@ -14,4 +14,5 @@ python main.py --dataset 'celeba' \
 --aggr_freq 5 \
 --balance_agg_a 0 \
 --num_edge_servers 2 \
+--train_scratch \
 --tqdm
