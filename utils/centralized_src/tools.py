@@ -11,6 +11,7 @@ from torch.utils.data import DataLoader
 from termcolor import colored
 from utils.data.dataset import dataset_wrapper
 from multiprocessing import cpu_count
+from torch.nn.functional import softmax
 from scipy.stats import entropy
 
 
@@ -114,12 +115,14 @@ class InceptionScore:
         self.device = device
         self.inception = InceptionV3([inception_block_idx]).to(device)
 
-    def calculate_inception_features(self, samples):
+    def calculate_inception_probabilities(self, samples):
         self.inception.eval()
-        features = self.inception(samples)[0]
-        if features.size(2) != 1 or features.size(3) != 1:
-            features = adaptive_avg_pool2d(features, output_size=(1, 1))
-        return features.squeeze()
+        with torch.no_grad():
+            # Get the logits from the Inception model
+            logits = self.inception(samples)[0]
+            # Apply softmax to get class probabilities
+            probabilities = softmax(logits, dim=1)
+        return probabilities
 
     def inception_score(self, sampler, num_samples, splits=10):
         self.inception.eval()
@@ -128,8 +131,9 @@ class InceptionScore:
         batches = num_to_groups(num_samples, self.batch_size)
         for batch in tqdm(batches, desc='Calculating Inception Score'):
             fake_samples = sampler(batch, clip=True, min1to1=False)
-            features = self.calculate_inception_features(fake_samples)
-            preds.append(features.detach().cpu().numpy())
+            # Use softmax probabilities for Inception Score
+            probabilities = self.calculate_inception_probabilities(fake_samples)
+            preds.append(probabilities.detach().cpu().numpy())
 
         preds = np.concatenate(preds, axis=0)
         scores = []
@@ -139,10 +143,11 @@ class InceptionScore:
         for k in range(splits):
             part = preds[k * split_size: (k + 1) * split_size, :]
             py = np.mean(part, axis=0)
-            scores.append(np.exp(np.mean([entropy(part[i], py) for i in range(part.shape[0])])))
+            kl_divergence = part * (np.log(part) - np.log(np.expand_dims(py, 0)))
+            kl_mean = np.mean(np.sum(kl_divergence, axis=1))
+            scores.append(np.exp(kl_mean))
 
         return np.mean(scores), np.std(scores)
-
 
 def make_notification(content, color, boundary='-'):
     notice = boundary * 30 + '\n'
@@ -168,7 +173,6 @@ class Config:
 
     def get_args(self):
         return self.args
-
 
 
 
