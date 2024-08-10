@@ -10,9 +10,10 @@ python main.py --dataset 'cifar10' \
 --seed 2023 \
 --save \
 --calculate_fid \
+--calculate_is \
 --aggr_freq 5 \
---balance_agg_a 20000 \
---pruning_ratio 0.3 \
+--balance_agg_a 40000 \
+--pruning_ratio 0.2 \
 --num_edge_servers 2 \
 --train_scratch \
 --tqdm
