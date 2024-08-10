@@ -12,6 +12,7 @@ python main.py --dataset 'cifar10' \
 --calculate_fid \
 --aggr_freq 5 \
 --st_rounds 500 \
+--pruning_ratio 0.3 \
 --balance_agg_a 20000 \
 --num_edge_servers 2 \
 --sparse_training \
