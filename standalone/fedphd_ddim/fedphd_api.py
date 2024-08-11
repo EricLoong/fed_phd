@@ -125,7 +125,7 @@ class fedphd_api:
                     self.edge_models[edge_idx] = (edge_sever_num_samples_temp, self._aggregate(edge_server))
 
             # Central server aggregation every 5 rounds
-            if (round_idx+1)  % self.args.aggr_freq == 0:
+            if (round_idx)  % self.args.aggr_freq == 0:
                 self.logger.info("########## Aggregating at central server ##########")
                 w_global = self._aggregate_server(w_locals=self.edge_models, target_distribution=self.server_distribution,
                                                   edge_distributions=edge_server_distributions)

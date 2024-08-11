@@ -111,33 +111,32 @@ class FID:
         return calculate_frechet_distance(m1, s1, self.m2, self.s2), generated_samples_return
 
 
-class InceptionScore:
-    def __init__(self, batch_size,  device='cuda', inception_block_idx=3):
+class InceptionScore(nn.Module):
+    def __init__(self, batch_size, device='cuda', inception_block_idx=3):
+        super(InceptionScore, self).__init__()
         assert inception_block_idx in [0, 1, 2, 3], 'inception_block_idx must be either 0, 1, 2, 3'
         self.batch_size = batch_size
         self.device = device
-        #self.inception = InceptionV3([inception_block_idx]).to(device)
         self.inception = inception_v3(pretrained=True, transform_input=False).to(device)
+        self.inception.eval()
 
     def calculate_inception_probabilities(self, samples):
-        self.inception.eval()
         with torch.no_grad():
             # Resize to expected input size for InceptionV3 (299x299)
             samples = nn.functional.interpolate(samples, size=(299, 299), mode='bilinear')
-            logits = self.inception(samples)[0]
+            logits = self.inception(samples)
             probabilities = softmax(logits, dim=1)
         return probabilities
 
     def inception_score(self, sampler, num_samples, splits=10):
-        self.inception.eval()
         preds = []
 
         batches = num_to_groups(num_samples, self.batch_size)
-        for batch in tqdm(batches, desc='Calculating Inception Score'):
-            fake_samples = sampler(batch)
-            # Use softmax probabilities for Inception Score
+        for batch_size in tqdm(batches, desc='Calculating Inception Score'):
+            # Call the sampler function with the appropriate batch size
+            fake_samples = sampler(batch_size=batch_size)
             probabilities = self.calculate_inception_probabilities(fake_samples)
-            preds.append(probabilities.detach().cpu().numpy())
+            preds.append(probabilities.cpu().numpy())
 
         preds = np.concatenate(preds, axis=0)
         scores = []
