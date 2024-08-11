@@ -4,18 +4,16 @@ import math
 import copy
 import torch
 import torch.nn as nn
-from torch.utils.data import DataLoader
-import torchvision
 from torch.optim import Adam
 from torch.utils.tensorboard import SummaryWriter
 from torchvision.utils import save_image
 from functools import partial
-from tqdm import tqdm
 import datetime
 from termcolor import colored
 from utils.centralized_src.tools import num_to_groups
 import numpy as np
 from torch.optim.lr_scheduler import LambdaLR
+
 
 def cycle_with_label(dl):
     while True:
@@ -23,13 +21,15 @@ def cycle_with_label(dl):
             img, label = data
             yield img, label
 
+
 def cycle(dl):
     while True:
         for data in dl:
             yield data
 
+
 class Trainer:
-    def __init__(self, diffusion_model, fid_scorer, inception_scorer,batch_size=32, lr=2e-5, ddim_samplers=None,
+    def __init__(self, diffusion_model, fid_scorer, inception_scorer, batch_size=32, lr=2e-5, ddim_samplers=None,
                  num_samples=25, result_folder='./results', cpu_percentage=0,
                  ddpm_fid_score_estimate_every=None, ddpm_num_fid_samples=None,
                  max_grad_norm=1., logger=None, args=None, clip=True):
@@ -64,7 +64,7 @@ class Trainer:
         self.tensorboard_name = None
         self.writer = None
         self.global_step = 0
-        #self.fid_score_log = dict()
+        # self.fid_score_log = dict()
         assert clip in [True, False, 'both'], "clip must be one of [True, False, 'both']"
         if clip is True or clip == 'both':
             os.makedirs(os.path.join(self.ddpm_result_folder, 'clip'), exist_ok=True)
@@ -100,7 +100,7 @@ class Trainer:
                 if self.tqdm_sampler_name is None:
                     self.tqdm_sampler_name = sampler.sampler_name
                 sampler.num_fid_sample = sampler.num_fid_sample if sampler.num_fid_sample is not None else 0
-                #self.fid_score_log[sampler.sampler_name] = list()
+                # self.fid_score_log[sampler.sampler_name] = list()
             if sampler.fixed_noise:
                 sampler.register_buffer('noise', torch.randn([self.num_samples, sampler.channel,
                                                               sampler.image_size, sampler.image_size]))
@@ -138,7 +138,7 @@ class Trainer:
         self.diffusion_model.load_state_dict(model_parameters)
 
     def set_data_loader(self, data_loader):
-        #self.dataLoader = cycle_with_label(data_loader)  # This procedure is for traditional centralized training. We don't need this for federated learning.
+        # self.dataLoader = cycle_with_label(data_loader)  # This procedure is for traditional centralized training. We don't need this for federated learning.
         self.dataLoader = data_loader
 
     def set_id(self, trainer_id):
@@ -223,7 +223,7 @@ class Trainer:
     def ddim_fid_calculation(self, current_step):
         with torch.no_grad():
             for sampler in self.ddim_samplers:
-                if sampler.calculate_fid and (current_step) % self.args.fid_freq == 0:
+                if sampler.calculate_fid and (current_step + 1) % self.args.fid_freq == 0:
                     print(f"Calculating FID at step {current_step}")
                     sample_func = partial(sampler.sample, self.diffusion_model)
                     ddim_cur_fid, _ = self.fid_scorer.fid_score(sample_func, sampler.num_fid_sample)
@@ -236,12 +236,15 @@ class Trainer:
     def ddim_inception_calculation(self, current_step):
         with torch.no_grad():
             for sampler in self.ddim_samplers:
-                if sampler.calculate_inception and (current_step) % self.args.fid_freq == 0:
+                if sampler.calculate_inception and (current_step + 1) % self.args.fid_freq == 0 and (
+                        current_step + 1) >= 4000:
                     # Calculate the Inception Score at the same time of FID calculation
                     print(f"Calculating Inception Score at step {current_step}")
                     sample_func = partial(sampler.sample, self.diffusion_model)
-                    ddim_cur_inception_mean, ddim_cur_inception_std = self.inception_scorer.inception_score(sample_func, sampler.num_inception_sample)
-                    self.logger.info(f"Inception Score using {sampler.sampler_name} at step {current_step}: Mean {ddim_cur_inception_mean}, Std {ddim_cur_inception_std}")
+                    ddim_cur_inception_mean, ddim_cur_inception_std = self.inception_scorer.inception_score(sample_func,
+                                                                                                            sampler.num_inception_sample)
+                    self.logger.info(
+                        f"Inception Score using {sampler.sampler_name} at step {current_step}: Mean {ddim_cur_inception_mean}, Std {ddim_cur_inception_std}")
                     # Uncomment the following lines if you want to save the model based on Inception Score
                     # if sampler.best_inception[0] < ddim_cur_inception_mean:
                     #     sampler.best_inception[0] = ddim_cur_inception_mean
