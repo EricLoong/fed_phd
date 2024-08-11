@@ -1,8 +1,8 @@
 import math
 import torch.nn as nn
 import numpy as np
-from pytorch_fid.fid_score import calculate_frechet_distance
-from pytorch_fid.inception import InceptionV3
+from pytorch_fid.fid_score import calculate_frechet_distance,InceptionV3
+from torchvision.models import inception_v3
 from torch.nn.functional import adaptive_avg_pool2d
 from tqdm import tqdm
 import os
@@ -51,13 +51,17 @@ class FID:
         self.dataset_name = dataset_name
         self.device = device
         self.no_label = no_label
-        self.inception = InceptionV3([inception_block_idx]).to(device)
+        self.inception = inception_v3(pretrained=True, transform_input=False).to(device)
+        #self.inception.eval()
+
+        #self.inception = InceptionV3([inception_block_idx]).to(device)
 
         os.makedirs(cache_dir, exist_ok=True)
         self.m2, self.s2 = self.load_dataset_stats()
 
     def calculate_inception_features(self, samples):
         self.inception.eval()
+        samples = nn.functional.interpolate(samples, size=(299, 299), mode='bilinear')
         features = self.inception(samples)[0]
         if features.size(2) != 1 or features.size(3) != 1:
             features = adaptive_avg_pool2d(features, output_size=(1, 1))
@@ -108,19 +112,19 @@ class FID:
 
 
 class InceptionScore:
-    def __init__(self, batch_size, dataLoader, device='cuda', inception_block_idx=3):
+    def __init__(self, batch_size,  device='cuda', inception_block_idx=3):
         assert inception_block_idx in [0, 1, 2, 3], 'inception_block_idx must be either 0, 1, 2, 3'
         self.batch_size = batch_size
-        self.dataLoader = dataLoader
         self.device = device
-        self.inception = InceptionV3([inception_block_idx]).to(device)
+        #self.inception = InceptionV3([inception_block_idx]).to(device)
+        self.inception = inception_v3(pretrained=True, transform_input=False).to(device)
 
     def calculate_inception_probabilities(self, samples):
         self.inception.eval()
         with torch.no_grad():
-            # Get the logits from the Inception model
+            # Resize to expected input size for InceptionV3 (299x299)
+            samples = nn.functional.interpolate(samples, size=(299, 299), mode='bilinear')
             logits = self.inception(samples)[0]
-            # Apply softmax to get class probabilities
             probabilities = softmax(logits, dim=1)
         return probabilities
 
@@ -130,7 +134,7 @@ class InceptionScore:
 
         batches = num_to_groups(num_samples, self.batch_size)
         for batch in tqdm(batches, desc='Calculating Inception Score'):
-            fake_samples = sampler(batch, clip=True, min1to1=False)
+            fake_samples = sampler(batch)
             # Use softmax probabilities for Inception Score
             probabilities = self.calculate_inception_probabilities(fake_samples)
             preds.append(probabilities.detach().cpu().numpy())
@@ -205,5 +209,5 @@ def setup_inception_scorer(args, image_size):
     )
     num_workers = int(cpu_count() * args.cpu_percentage)
     dataLoader = DataLoader(dataset, batch_size=batch_size, num_workers=num_workers, pin_memory=True)
-    inception_scorer = InceptionScore(batch_size, dataLoader, device=args.device)
+    inception_scorer = InceptionScore(batch_size, device=args.device)
     return inception_scorer
