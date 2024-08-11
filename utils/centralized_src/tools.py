@@ -51,10 +51,10 @@ class FID:
         self.dataset_name = dataset_name
         self.device = device
         self.no_label = no_label
-        self.inception = inception_v3(pretrained=True, transform_input=False).to(device)
+        #self.inception = inception_v3(pretrained=True, transform_input=False).to(device)
         #self.inception.eval()
 
-        #self.inception = InceptionV3([inception_block_idx]).to(device)
+        self.inception = InceptionV3([inception_block_idx]).to(device)
 
         os.makedirs(cache_dir, exist_ok=True)
         self.m2, self.s2 = self.load_dataset_stats()
