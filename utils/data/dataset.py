@@ -59,10 +59,6 @@ def dataset_wrapper(dataset, data_dir, image_size, augment_horizontal_flip=True,
             if partial_data and net_dataidx_map is not None:
                 dataSet = Subset(train_set, net_dataidx_map)
                 print(colored(f'Partitioned CelebA Dataset: {len(dataSet)} images.', info_color))
-                for client_id, indices in net_dataidx_map.items():
-                    print(f"Client {client_id} has indices: {indices}")
-                    for idx in indices:
-                        print(f"Index {idx} maps to class: {train_set[idx][1]}")
             else:
                 dataSet = train_set
                 print(colored(f'Loaded CelebA dataset with {len(dataSet)} images.', info_color))
