@@ -284,6 +284,9 @@ if __name__ == "__main__":
                                                   n_nets=args.client_num_in_total)
     else:
         raise ValueError("Dataset not supported")
+    
+    if data_info is None or len(data_info) != 3:
+        raise ValueError("Partitioning returned invalid data.")
     if args.train_scratch:
         print("Training from scratch")
         model = load_model(args, out_unet=True)
