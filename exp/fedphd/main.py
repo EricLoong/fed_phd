@@ -201,7 +201,7 @@ def setup_trainer(args, diffusion_model, fid_scorer, inception_scorer, ddim_samp
                       )
     return trainer
 
-def train_pruned_model(model,args,logger):
+def train_pruned_model(model,args,logger,data_info):
     device = args.device
     group_norm_prune(model=model, args=args, logger=logger)
     if args.dataset == "cifar10":
@@ -211,13 +211,11 @@ def train_pruned_model(model,args,logger):
     diffusion_model = GaussianDiffusion(model, image_size=image_size).to(device)
     ddim_samplers = setup_ddim_sampler(args, diffusion_model)  # Just one sampler in defalt
     fid_scorer = setup_fid_scorer(args, image_size=diffusion_model.image_size)
-    inception_scorer = setup_inception_scorer(args, image_size=diffusion_model.image_size)
+    inception_scorer = setup_inception_scorer(args)
     global_model_trainer = setup_trainer(args, diffusion_model, fid_scorer=fid_scorer,
                                          inception_scorer=inception_scorer, ddim_samplers=ddim_samplers,
                                          logger=logger)
     logger.info(diffusion_model)
-    data_info = partition_data_indices_cifar10(datadir=args.data_dir, partition=args.partition_method,
-                                               n_nets=args.client_num_in_total, n_cls=args.partition_alpha)
     FedPhDAPI = fedphd_api(data_info, device, args, global_model_trainer, logger)
     FedPhDAPI.train()
 
@@ -290,7 +288,7 @@ if __name__ == "__main__":
     if args.train_scratch:
         print("Training from scratch")
         model = load_model(args, out_unet=True)
-        train_pruned_model(model,args,logger)
+        train_pruned_model(model,args,logger,data_info)
     else:
         # Sparse training and then fine-tune the pruned model
         # ensure sparse_train is True in your args
