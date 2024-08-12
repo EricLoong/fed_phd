@@ -195,18 +195,7 @@ def setup_fid_scorer(args, image_size):
     fid_scorer = FID(fid_batch_size, dataLoader_fid, dataset_name=args.dataset, device=args.device, no_label=os.path.isdir(args.data_dir))
     return fid_scorer
 
-def setup_inception_scorer(args, image_size):
+def setup_inception_scorer(args):
     batch_size = args.fid_estimate_batch_size
-    dataset = dataset_wrapper(
-        dataset=args.dataset,
-        data_dir=args.data_dir,
-        image_size=image_size,
-        augment_horizontal_flip=False,
-        info_color='magenta',
-        min1to1=False,
-        partial_data=False
-    )
-    num_workers = int(cpu_count() * args.cpu_percentage)
-    dataLoader = DataLoader(dataset, batch_size=batch_size, num_workers=num_workers, pin_memory=True)
     inception_scorer = InceptionScore(batch_size, device=args.device)
     return inception_scorer
