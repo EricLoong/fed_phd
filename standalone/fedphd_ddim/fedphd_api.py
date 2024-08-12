@@ -35,7 +35,7 @@ class fedphd_api:
     def _get_num_classes(self, dataset_name):
         dataset_classes = {
             'cifar10': 10,
-            'mnist': 10,
+            'celeba': 4,
             # Add other datasets here as needed
         }
         return dataset_classes.get(dataset_name.lower(), 10)  # Default to 10 if not found
