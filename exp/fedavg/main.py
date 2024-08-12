@@ -158,7 +158,7 @@ def load_model(args,out_unet=False):
     else:
         raise ValueError(f"Dataset {args.dataset} not supported")
     model = diffusion.to(args.device)
-    
+
     return model
 
 def setup_trainer(args, diffusion_model, fid_scorer,inception_scorer, ddim_samplers,logger):
@@ -240,7 +240,7 @@ if __name__ == "__main__":
     global_model_trainer = setup_trainer(args, diffusion_model, fid_scorer=fid_scorer,inception_scorer=inception_scorer, ddim_samplers=ddim_samplers,logger=logger)
     logger.info(diffusion_model)
     if args.dataset == "celeba":
-        data_info = partition_data_indices_celeba(datadir=args.data_dir, partition=args.partition_method, n_nets=args.client_num_in_total, n_cls=args.partition_alpha)
+        data_info = partition_data_indices_celeba(datadir=args.data_dir, partition=args.partition_method, n_nets=args.client_num_in_total)
     elif args.dataset == "cifar10":
         data_info = partition_data_indices_cifar10(datadir=args.data_dir, partition=args.partition_method, n_nets=args.client_num_in_total, n_cls=args.partition_alpha)
     else:
