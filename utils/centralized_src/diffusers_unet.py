@@ -15,7 +15,7 @@ unet_cifar10_standard = UNet2DModel(
 )
 
 unet_celeba_standard = UNet2DModel(
-    sample_size=32,
+    sample_size=64,
     in_channels=3,
     out_channels=3,
     layers_per_block=2,

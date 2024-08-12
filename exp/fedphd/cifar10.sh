@@ -10,6 +10,7 @@ python main.py --dataset 'cifar10' \
 --seed 2023 \
 --save \
 --calculate_fid \
+--calculate_is \
 --aggr_freq 5 \
 --st_rounds 200 \
 --pruning_ratio 0.2 \
