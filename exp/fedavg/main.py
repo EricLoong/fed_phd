@@ -28,6 +28,7 @@ from utils.centralized_src.diffusion import GaussianDiffusion, DDIM_Sampler
 from utils.centralized_src.diffusers_unet import unet_cifar10_standard, unet_celeba_standard
 from utils.centralized_src.tools import Config,setup_fid_scorer,setup_inception_scorer
 from utils.data.cifar10 import partition_data_indices_cifar10
+from utils.data.celeba import partition_data_indices_celeba
 from standalone.fedavg_ddim.fedavg_api import fedavg_api
 from standalone.fedavg_ddim.init_trainer import Trainer
 from datetime import datetime
@@ -141,8 +142,10 @@ def setup_ddim_sampler(args, diffusion_model):
 def load_model(args):
     if args.dataset == "celeba":
         image_size = 64
-        unet_cifar10 = unet_celeba_standard.to(args.device)
-        diffusion = GaussianDiffusion(unet_cifar10, image_size=image_size).to(args.device)
+        #unet_celeba = unet_celeba_standard.to(args.device)
+        unet_celeba = Unet(dim=128, dim_multiply=(1, 2, 2, 2), image_size=image_size, attn_resolutions=(16,),
+                           dropout=0.0, num_res_blocks=2)
+        diffusion = GaussianDiffusion(unet_celeba, image_size=image_size).to(args.device)
     elif args.dataset == "cifar10":
         image_size = 32
         unet_cifar10 = unet_cifar10_standard.to(args.device)
@@ -227,10 +230,14 @@ if __name__ == "__main__":
     # pretrained_model_path = os.path.join(cur_dir, 'results', args.dataset, '20240404_005104fedavg-iid-mdlmedium-u-cm50000-total_clnt1-neighbor1-seed2023.pth')
     ddim_samplers = setup_ddim_sampler(args, diffusion_model) # Just one sampler in defalt
     fid_scorer = setup_fid_scorer(args,image_size=diffusion_model.image_size)
-    inception_scorer = setup_inception_scorer(args, image_size=diffusion_model.image_size)
+    inception_scorer = setup_inception_scorer(args)
     global_model_trainer = setup_trainer(args, diffusion_model, fid_scorer=fid_scorer,inception_scorer=inception_scorer, ddim_samplers=ddim_samplers,logger=logger)
     logger.info(diffusion_model)
-
-    data_info = partition_data_indices_cifar10(datadir=args.data_dir, partition=args.partition_method, n_nets=args.client_num_in_total, n_cls=args.partition_alpha)
+    if args.dataset == "celeba":
+        data_info = partition_data_indices_celeba(datadir=args.data_dir, partition=args.partition_method, n_nets=args.client_num_in_total, n_cls=args.partition_alpha)
+    elif args.dataset == "cifar10":
+        data_info = partition_data_indices_cifar10(datadir=args.data_dir, partition=args.partition_method, n_nets=args.client_num_in_total, n_cls=args.partition_alpha)
+    else:
+        raise ValueError(f"Dataset {args.dataset} not supported")
     FedAvgAPI = fedavg_api(data_info, device, args, global_model_trainer, logger)
     final_global_model = FedAvgAPI.train()

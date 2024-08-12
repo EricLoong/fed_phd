@@ -10,4 +10,5 @@ python main.py --dataset 'celeba' \
 --seed 2023 \
 --save \
 --calculate_fid \
+--calculate_is \
 --tqdm
