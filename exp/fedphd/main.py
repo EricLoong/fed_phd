@@ -284,7 +284,7 @@ if __name__ == "__main__":
                                                   n_nets=args.client_num_in_total)
     else:
         raise ValueError("Dataset not supported")
-    
+
     if data_info is None or len(data_info) != 3:
         raise ValueError("Partitioning returned invalid data.")
     if args.train_scratch:
@@ -306,7 +306,7 @@ if __name__ == "__main__":
         args.comm_round = args.st_rounds
         ddim_samplers = setup_ddim_sampler(args, diffusion_model)  # Just one sampler in defalt
         fid_scorer = setup_fid_scorer(args, image_size=diffusion_model.image_size)
-        inception_scorer = setup_inception_scorer(args, image_size=diffusion_model.image_size)
+        inception_scorer = setup_inception_scorer(args)
         global_model_trainer = setup_trainer(args, diffusion_model, fid_scorer=fid_scorer, ddim_samplers=ddim_samplers,
                                              inception_scorer=inception_scorer, logger=logger)
         logger.info(diffusion_model)
