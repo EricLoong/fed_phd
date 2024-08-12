@@ -282,6 +282,8 @@ if __name__ == "__main__":
     elif args.dataset == "celeba":
         data_info = partition_data_indices_celeba(datadir=args.data_dir, partition=args.partition_method,
                                                   n_nets=args.client_num_in_total)
+    else:
+        raise ValueError("Dataset not supported")
     if args.train_scratch:
         print("Training from scratch")
         model = load_model(args, out_unet=True)
@@ -306,8 +308,6 @@ if __name__ == "__main__":
                                              inception_scorer=inception_scorer, logger=logger)
         logger.info(diffusion_model)
 
-        data_info = partition_data_indices_cifar10(datadir=args.data_dir, partition=args.partition_method,
-                                                   n_nets=args.client_num_in_total, n_cls=args.partition_alpha)
         FedPhDAPI_initial = fedphd_api(data_info, device, args, global_model_trainer, logger)
         sparse_model = FedPhDAPI_initial.train()
         model = load_model(args, out_unet=True) # random init model
