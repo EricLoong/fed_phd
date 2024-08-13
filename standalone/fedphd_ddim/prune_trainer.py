@@ -146,6 +146,8 @@ class Trainer:
 
     def train(self, round_idx):
         epochs = self.args.epochs
+        gradient_accumulate_every = self.args.gradient_accumulate_every  # Define this in your args
+
         for epoch in range(epochs):
             self.diffusion_model.train()
             epoch_loss = 0  # Initialize variable to accumulate loss
@@ -154,7 +156,9 @@ class Trainer:
             self.logger.info(f"Starting epoch {epoch + 1}/{epochs}")
 
             for batch_idx, data in enumerate(self.dataLoader):  # Iterate through all batches
-                self.optimizer.zero_grad()
+                if batch_idx % gradient_accumulate_every == 0:
+                    self.optimizer.zero_grad()  # Reset gradients at the start of each accumulation cycle
+
                 if isinstance(data, (tuple, list)):
                     # Dataset with labels (e.g., CIFAR10)
                     image, _ = data
@@ -169,21 +173,23 @@ class Trainer:
                     reg_loss = self.group_norm_regularization(self.diffusion_model)
                     loss += self.lambda_sparse * reg_loss
 
+                loss = loss / gradient_accumulate_every  # Scale loss by accumulation steps
                 loss.backward()
-                nn.utils.clip_grad_norm_(self.diffusion_model.parameters(), self.max_grad_norm)
-                self.optimizer.step()
-                if self.scheduler:
-                    self.scheduler.step()  # Step the scheduler after each batch
 
-                epoch_loss += loss.item()  # Accumulate the loss
+                # If we have accumulated gradients for `gradient_accumulate_every` batches
+                if (batch_idx + 1) % gradient_accumulate_every == 0 or (batch_idx + 1) == len(self.dataLoader):
+                    nn.utils.clip_grad_norm_(self.diffusion_model.parameters(), self.max_grad_norm)
+                    self.optimizer.step()  # Update the model parameters
+
+                    if self.scheduler:
+                        self.scheduler.step()  # Step the scheduler after each accumulation cycle
+
+                epoch_loss += loss.item() * gradient_accumulate_every  # Accumulate the loss
                 num_batches += 1
-                # if batch_idx % 10 == 0:
-                #    self.logger.info(f"Batch {batch_idx}: Loss {loss.item()}")
 
             # Calculate the average loss for the epoch
             average_loss = epoch_loss / num_batches
 
-            # if round_idx % self.args.sample_every == 0:
             self.logger.info(f"Round {round_idx} Epoch {epoch} Average Loss: {average_loss}")
 
             if self.args.central_train:

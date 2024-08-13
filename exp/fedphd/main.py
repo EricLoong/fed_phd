@@ -123,6 +123,7 @@ def add_args(parser):
                         help='Number of warmup steps for the scheduler;5000 for cifar10')
     parser.add_argument('--fid_freq', type=int, default=500, help='Frequency of FID calculation')
     parser.add_argument('--central_train', action='store_true', help='Train a centralized model')
+    parser.add_argument('--gradient_accumulate_every',type=int, default = 1, help='Number of steps for gradient accumulation')
 
     # Arguments for FedPhD
     parser.add_argument('--num_edge_servers', type=int, default=2, help='Number of edge servers')
