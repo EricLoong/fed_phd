@@ -97,7 +97,7 @@ class fedphd_api:
                 edge_server_clients[edge_server_idx].append(client_idx)
                 self.logger.info('Client {} is assigned to Edge Server {}'.format(client_idx, edge_server_idx))
 
-            temp_edge_models = copy.deepcopy(self.edge_models)
+            temp_edge_models = self.edge_models
             for edge_server_idx, clients in enumerate(edge_server_clients):
                 for cur_clnt in clients:
                     client = self.client_list[cur_clnt]
@@ -105,11 +105,7 @@ class fedphd_api:
                                                                                                             edge_server_idx,
                                                                                                             cur_clnt))
                     # Train client based on edge server model
-                    print(f"Memory usage before round {round_idx}:")
-                    print(torch.cuda.memory_summary())
                     w_per = client.train(copy.deepcopy(temp_edge_models[edge_server_idx][1]), round_idx)
-                    print(f"Memory usage after train {round_idx}:")
-                    print(torch.cuda.memory_summary())
                     w_locals[edge_server_idx].append((client.get_sample_number(), copy.deepcopy(w_per)))
 
                     # Update client distribution on the selected edge server
