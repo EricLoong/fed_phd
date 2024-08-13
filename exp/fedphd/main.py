@@ -209,6 +209,8 @@ def train_pruned_model(model,args,logger,data_info):
     else:
         image_size = 64
     diffusion_model = GaussianDiffusion(model, image_size=image_size).to(device)
+    print("Memory usage after model initialization:")
+    print(torch.cuda.memory_summary())
     ddim_samplers = setup_ddim_sampler(args, diffusion_model)  # Just one sampler in defalt
     fid_scorer = setup_fid_scorer(args, image_size=diffusion_model.image_size)
     inception_scorer = setup_inception_scorer(args)
@@ -222,8 +224,11 @@ def train_pruned_model(model,args,logger,data_info):
 if __name__ == "__main__":
     torch.cuda.empty_cache()
     parser = add_args(argparse.ArgumentParser(description="FedPhD-standalone"))
+
     args = parser.parse_args()
     device = args.device
+    print("Memory usage before training:")
+    print(torch.cuda.memory_summary())
     # print("torch version{}".format(torch.__version__))
 
     Config.initialize(args)
