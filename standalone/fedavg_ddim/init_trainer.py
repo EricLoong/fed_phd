@@ -145,7 +145,7 @@ class Trainer:
 
     def train(self, round_idx):
         epochs = self.args.epochs
-        global_params = copy.deepcopy(self.diffusion_model.parameters()) # Store the global parameters
+        global_params = {k: v.clone() for k, v in self.diffusion_model.state_dict().items()} # Store the global parameters
 
         for epoch in range(epochs):
             self.diffusion_model.train()
@@ -168,7 +168,7 @@ class Trainer:
                 if self.args.prox:
                     # Calculate proximal term
                     prox_loss = 0.0
-                    for param, global_param in zip(self.diffusion_model.parameters(), global_params):
+                    for param, global_param in zip(self.diffusion_model.parameters(), global_params.values()):
                         prox_loss += (param - global_param).norm(2)
                     prox_term = (self.args.mu / 2.0) * prox_loss
                     loss += prox_term

@@ -157,9 +157,12 @@ def load_model(args,out_unet=False):
         diffusion = GaussianDiffusion(unet, image_size=image_size).to(args.device)
     else:
         raise ValueError(f"Dataset {args.dataset} not supported")
-    model = diffusion.to(args.device)
 
-    return model
+    model = diffusion.to(args.device)
+    if out_unet:
+        return unet
+    else:
+        return model
 
 def setup_trainer(args, diffusion_model, fid_scorer,inception_scorer, ddim_samplers,logger):
     # Initialize the trainer with the provided arguments
