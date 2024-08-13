@@ -26,7 +26,7 @@ class Client:
         self.dataSet = dataset_wrapper(self.args.dataset, data_dir=self.args.data_dir,
                                        image_size=self.model_trainer.image_size, partial_data=True,
                                        net_dataidx_map=self.data_indices)
-        self.dataLoader = DataLoader(self.dataSet, batch_size=self.args.batch_size, shuffle=True, num_workers=0)
+        self.dataLoader = DataLoader(self.dataSet, batch_size=self.args.batch_size, shuffle=True, num_workers=0,pin_memory=True)
         self.label_distribution = self._calculate_label_distribution()
 
     def _calculate_label_distribution(self):

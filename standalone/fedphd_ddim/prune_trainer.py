@@ -195,6 +195,7 @@ class Trainer:
             if self.args.central_train:
                 self.ddim_image_generation(epoch)
                 self.ddim_fid_calculation(epoch)
+        torch.cuda.empty_cache()
 
     def group_norm_regularization(self, model, p=2):
         group_norm = 0.0
