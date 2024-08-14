@@ -22,7 +22,8 @@ def set_directory_to_fed_diff():
         print("The directory 'fed_diff' was not found in the current path.")
         return None
 
-
+# Set the directory to the root of the project
+# This is to ensure that the project modules can be imported
 base_path = set_directory_to_fed_diff()
 
 # from utils.centralized_src.model_original import Unet
@@ -323,6 +324,6 @@ if __name__ == "__main__":
         args.sparse_training = False
         args.comm_round = rest_rounds
 
-        train_pruned_model(model,args,logger)
+        train_pruned_model(model,args,logger,data_info)
 
 
