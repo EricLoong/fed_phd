@@ -237,6 +237,7 @@ if __name__ == "__main__":
     if data_partition != "iid":
         data_partition += str(args.partition_alpha)
     args.identity = "fedphd" + "-" + data_partition
+    args.identity += "-{}".format(args.dataset)
     args.client_num_per_round = int(args.client_num_in_total * args.frac)
 
     args.identity += "-lambda" + str(args.lambda_sparse)
@@ -245,6 +246,7 @@ if __name__ == "__main__":
     )
     args.identity += "-neighbor" + str(args.client_num_per_round)
     args.identity += '-balance_agg' + str(args.balance_agg_a)
+    args.identity += "-batchsize" + str(args.batch_size * args.gradient_accumulate_every)
     args.identity += "-seed" + str(args.seed)
     if args.train_scratch:
         args.identity += "-train_from_begin"

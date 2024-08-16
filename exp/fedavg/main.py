@@ -201,12 +201,14 @@ if __name__ == "__main__":
         args.identity = "fedprox" + "-" + data_partition
     else:
         args.identity = "fedavg" + "-" + data_partition
+    args.identity += "-{}".format(args.dataset)
     args.client_num_per_round = int(args.client_num_in_total * args.frac)
     #args.identity += "-mdl" + args.model_name
     args.identity += (
         "-cm" + str(args.comm_round) + "-total_clnt" + str(args.client_num_in_total)
     )
     args.identity += "-neighbor" + str(args.client_num_per_round)
+    args.identity += "-batchsize" + str(args.batch_size*args.gradient_accumulate_every)
     args.identity += "-seed" + str(args.seed)
 
     cur_dir = os.path.abspath(__file__).rsplit("/", 1)[0]
