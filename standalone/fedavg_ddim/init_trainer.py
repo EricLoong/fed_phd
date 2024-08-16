@@ -142,10 +142,11 @@ class Trainer:
     def set_id(self, trainer_id):
         self.id = trainer_id
 
-
     def train(self, round_idx):
         epochs = self.args.epochs
-        global_params = {k: v.clone() for k, v in self.diffusion_model.state_dict().items()} # Store the global parameters
+        gradient_accumulate_every = self.args.gradient_accumulate_every  # Define this in your args
+        global_params = {k: v.clone() for k, v in
+                         self.diffusion_model.state_dict().items()}  # Store the global parameters
 
         for epoch in range(epochs):
             self.diffusion_model.train()
@@ -155,7 +156,9 @@ class Trainer:
             self.logger.info(f"Starting epoch {epoch + 1}/{epochs}")
 
             for batch_idx, data in enumerate(self.dataLoader):  # Iterate through all batches
-                self.optimizer.zero_grad()
+                if batch_idx % gradient_accumulate_every == 0:
+                    self.optimizer.zero_grad()  # Reset gradients at the start of each accumulation cycle
+
                 if isinstance(data, (tuple, list)):
                     # Dataset with labels (e.g., CIFAR10)
                     image, _ = data
@@ -173,13 +176,18 @@ class Trainer:
                     prox_term = (self.args.mu / 2.0) * prox_loss
                     loss += prox_term
 
+                loss = loss / gradient_accumulate_every  # Scale loss by accumulation steps
                 loss.backward()
-                nn.utils.clip_grad_norm_(self.diffusion_model.parameters(), self.max_grad_norm)
-                self.optimizer.step()
-                if self.scheduler:
-                    self.scheduler.step()  # Step the scheduler after each batch
 
-                epoch_loss += loss.item()  # Accumulate the loss
+                # If we have accumulated gradients for `gradient_accumulate_every` batches
+                if (batch_idx + 1) % gradient_accumulate_every == 0 or (batch_idx + 1) == len(self.dataLoader):
+                    nn.utils.clip_grad_norm_(self.diffusion_model.parameters(), self.max_grad_norm)
+                    self.optimizer.step()  # Update the model parameters
+
+                    if self.scheduler:
+                        self.scheduler.step()  # Step the scheduler after each accumulation cycle
+
+                epoch_loss += loss.item() * gradient_accumulate_every  # Accumulate the loss
                 num_batches += 1
 
             # Calculate the average loss for the epoch
@@ -187,13 +195,11 @@ class Trainer:
 
             self.logger.info(f"Round {round_idx} Epoch {epoch} Average Loss: {average_loss}")
 
-
             if self.args.central_train:
                 self.ddim_image_generation(epoch)
                 self.ddim_fid_calculation(epoch)
 
         torch.cuda.empty_cache()
-
 
     def ddim_image_generation(self, current_step):
         with torch.no_grad():
