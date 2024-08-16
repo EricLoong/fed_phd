@@ -10,7 +10,7 @@ python main.py --dataset 'celeba' \
 --seed 2023 \
 --save \
 --prox \
-gradient_accumulate_every 2 \
+--gradient_accumulate_every 2 \
 --calculate_fid \
 --calculate_is \
 --tqdm
