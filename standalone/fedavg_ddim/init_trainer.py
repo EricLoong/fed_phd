@@ -200,6 +200,9 @@ class Trainer:
                 self.ddim_image_generation(epoch)
                 self.ddim_fid_calculation(epoch)
 
+        # Move the model back to CPU to free up GPU memory
+        self.diffusion_model.to('cpu')
+
         torch.cuda.empty_cache()
 
     def ddim_image_generation(self, current_step):
