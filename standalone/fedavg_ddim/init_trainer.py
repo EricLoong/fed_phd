@@ -172,6 +172,7 @@ class Trainer:
                     # Calculate proximal term
                     prox_loss = 0.0
                     for param, global_param in zip(self.diffusion_model.parameters(), global_params.values()):
+                        print(f"param shape: {param.shape}, global_param shape: {global_param.shape}")
                         prox_loss += (param - global_param).norm(2)
                     prox_term = (self.args.mu / 2.0) * prox_loss
                     loss += prox_term
