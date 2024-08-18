@@ -5,7 +5,8 @@ python main.py --dataset 'celeba' \
 --lr 2e-5 \
 --epochs 1 \
 --client_num_in_total 20 --frac 0.2 \
---sample_every 500 \
+--sample_every 100 \
+--fid_freq 100 \
 --comm_round 5000 \
 --seed 2023 \
 --save \
