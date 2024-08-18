@@ -131,7 +131,7 @@ class Trainer:
         print(f"{msg}: {total_sum}")
 
     def get_model_params(self):
-        model_parameters = self.diffusion_model.state_dict()
+        model_parameters = self.diffusion_model.cpu().state_dict()
         return copy.deepcopy(model_parameters)
 
     def set_model_params(self, model_parameters):
@@ -147,6 +147,7 @@ class Trainer:
     def train(self, round_idx):
         epochs = self.args.epochs
         gradient_accumulate_every = self.args.gradient_accumulate_every  # Define this in your args
+        self.diffusion_model.to(self.device)
 
         for epoch in range(epochs):
             self.diffusion_model.train()
@@ -195,6 +196,7 @@ class Trainer:
             if self.args.central_train:
                 self.ddim_image_generation(epoch)
                 self.ddim_fid_calculation(epoch)
+        self.diffusion_model.cpu()
         torch.cuda.empty_cache()
 
     def group_norm_regularization(self, model, p=2):

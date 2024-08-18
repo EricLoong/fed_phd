@@ -169,22 +169,22 @@ def load_model(args,out_unet=False):
     if args.dataset == "celeba":
         image_size = 64
         unet = unet_celeba_standard
-        unet.to(args.device)
+        #unet.to(args.device)
         # unet_celeba = Unet(dim=128,dim_multiply=(1,2,2,2),image_size=image_size,attn_resolutions=(16,),dropout=0.0,num_res_blocks=2)
-        diffusion = GaussianDiffusion(unet, image_size=image_size).to(args.device)
+        diffusion = GaussianDiffusion(unet, image_size=image_size)
     elif args.dataset == "cifar10":
         image_size = 32
         unet = unet_cifar10_standard
-        unet.to(args.device)
-        diffusion = GaussianDiffusion(unet, image_size=image_size).to(args.device)
+        #unet.to(args.device)
+        diffusion = GaussianDiffusion(unet, image_size=image_size)
     else:
         raise ValueError(f"Dataset {args.dataset} not supported")
 
-    model = diffusion.to(args.device)
+    #model = diffusion.to(args.device)
     if out_unet:
         return unet
     else:
-        return model
+        return diffusion
 
 
 def setup_trainer(args, diffusion_model, fid_scorer, inception_scorer, ddim_samplers, logger):
@@ -210,7 +210,7 @@ def train_pruned_model(model,args,logger,data_info):
         image_size = 32
     else:
         image_size = 64
-    diffusion_model = GaussianDiffusion(model, image_size=image_size).to(device)
+    diffusion_model = GaussianDiffusion(model, image_size=image_size)
     ddim_samplers = setup_ddim_sampler(args, diffusion_model)  # Just one sampler in defalt
     fid_scorer = setup_fid_scorer(args, image_size=diffusion_model.image_size)
     inception_scorer = setup_inception_scorer(args)
@@ -298,7 +298,6 @@ if __name__ == "__main__":
         # Sparse training and then fine-tune the pruned model
         # ensure sparse_train is True in your args
         diffusion_model = load_model(args)
-        diffusion_model=diffusion_model.to(device)
         num_params = num_params(diffusion_model)
         logger.info("Model num of params:{}".format(num_params))
         # Initail sparse training
@@ -321,7 +320,7 @@ if __name__ == "__main__":
         unet_state_dict = {k.replace('unet.', ''): v for k, v in sparse_model.items() if k.startswith('unet.')}
         print('Load sparse model state dict')
         model.load_state_dict(unet_state_dict)
-        model.to(device)
+       #model.to(device)
         # De-active the sparse training
         args.sparse_training = False
         args.comm_round = rest_rounds
