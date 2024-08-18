@@ -171,23 +171,10 @@ class Trainer:
                 if self.args.prox:
                     # Calculate proximal term
                     prox_loss = 0.0
-
                     # Iterate through named parameters to ensure correct matching
                     for name, param in self.diffusion_model.named_parameters():
-                        if name in global_params:
-                            global_param = global_params[name]
-
-                            # Ensure that the shapes match
-                            if param.shape == global_param.shape:
-                                # Calculate the L2 norm difference and add it to the prox_loss
-                                prox_loss += (param - global_param).norm(2)
-                            else:
-                                # Log a warning or handle the mismatch
-                                self.logger.warning(f"Skipping parameter {name} due to shape mismatch: "
-                                                    f"param shape {param.shape}, global_param shape {global_param.shape}")
-                        else:
-                            # Log a warning if the parameter is not found in global_params
-                            self.logger.warning(f"Parameter {name} not found in global_params")
+                        global_param = global_params[name]
+                        prox_loss += (param - global_param).norm(2)
 
                 loss = loss / gradient_accumulate_every  # Scale loss by accumulation steps
                 loss.backward()
