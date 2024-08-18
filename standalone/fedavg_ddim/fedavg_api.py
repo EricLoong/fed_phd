@@ -35,10 +35,6 @@ class fedavg_api(object):
 
     def train(self):
         w_global = self.model_trainer.get_model_params()
-        #w_per_mdls = []
-        # Initialization
-        #for clnt in range(self.args.client_num_in_total):
-        #    w_per_mdls.append(copy.deepcopy(w_global))
         if not self.args.tqdm:
             comm_round_iterable = range(self.args.comm_round)
         else:

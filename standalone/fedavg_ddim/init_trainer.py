@@ -129,7 +129,7 @@ class Trainer:
         print(f"{msg}: {total_sum}")
 
     def get_model_params(self):
-        model_parameters = self.diffusion_model.state_dict()
+        model_parameters = self.diffusion_model.cpu().state_dict()
         return copy.deepcopy(model_parameters)
 
     def set_model_params(self, model_parameters):
@@ -145,6 +145,7 @@ class Trainer:
     def train(self, round_idx):
         epochs = self.args.epochs
         gradient_accumulate_every = self.args.gradient_accumulate_every  # Define this in your args
+        self.diffusion_model.to(self.device)  # Move the model to the device
         global_params = {k: v.clone() for k, v in
                          self.diffusion_model.state_dict().items()}  # Store the global parameters
 
