@@ -151,12 +151,12 @@ def load_model(args,out_unet=False):
         unet = unet_celeba_standard
         #unet.to(args.device)
         # unet_celeba = Unet(dim=128,dim_multiply=(1,2,2,2),image_size=image_size,attn_resolutions=(16,),dropout=0.0,num_res_blocks=2)
-        diffusion = GaussianDiffusion(unet, image_size=image_size).to(args.device)
+        diffusion = GaussianDiffusion(unet, image_size=image_size)
     elif args.dataset == "cifar10":
         image_size = 32
         unet = unet_cifar10_standard
         #unet.to(args.device)
-        diffusion = GaussianDiffusion(unet, image_size=image_size).to(args.device)
+        diffusion = GaussianDiffusion(unet, image_size=image_size)
     else:
         raise ValueError(f"Dataset {args.dataset} not supported")
 
