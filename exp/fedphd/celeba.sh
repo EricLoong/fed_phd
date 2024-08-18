@@ -14,7 +14,8 @@ python main.py --dataset 'celeba' \
 --calculate_is \
 --gradient_accumulate_every 2 \
 --aggr_freq 5 \
---balance_agg_a 0 \
+--balance_agg_a 20000 \
 --num_edge_servers 2 \
 --train_scratch \
+--pruning_ratio 0.3 \
 --tqdm
