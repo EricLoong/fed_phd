@@ -48,6 +48,7 @@ def group_norm_prune(args, model, logger):
         image_size = 64
     else:
         raise ValueError(f"Invalid dataset {args.dataset}")
+    model.to(args.device)
     example_inputs = {'sample': torch.randn(1, 3, image_size, image_size).to(args.device), 'timestep': torch.ones((1,)).to(args.device)}
 
     # Define the importance criterion
@@ -78,6 +79,7 @@ def group_norm_prune(args, model, logger):
     model.to(args.device)
     logger.info(
         f"Prune Ratio is {args.pruning_ratio}. MACs: {base_macs / 1e9:.4f} G -> {macs / 1e9:.4f} G, #Params: {base_nparams / 1e6:.4f} M -> {nparams / 1e6:.4f} M")
+    model.to('cpu')
     return model
 
 
