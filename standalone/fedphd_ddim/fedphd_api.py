@@ -101,7 +101,7 @@ class fedphd_api:
             for edge_server_idx, clients in enumerate(edge_server_clients):
                 for cur_clnt in clients:
                     client = self.client_list[cur_clnt]
-                    self.logger.info('@@@@@@@@@@@@@@@@ Training Client CM({}) on Edge Server {}: {}'.format(round_idx,
+                    self.logger.info('@@@@@@@@@@@@@@@@ Attach Client CM({}) on Edge Server {}: {}'.format(round_idx,
                                                                                                             edge_server_idx,
                                                                                                             cur_clnt))
                     # Train client based on edge server model
