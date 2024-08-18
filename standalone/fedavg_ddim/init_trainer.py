@@ -50,7 +50,7 @@ class Trainer:
         self.max_grad_norm = max_grad_norm
         self.result_folder = os.path.join(result_folder, self.args.dataset, self.cur_time)
         self.ddpm_result_folder = os.path.join(self.result_folder, 'DDPM')
-        self.device = self.diffusion_model.device
+        self.device = self.args.device
         self.clip = clip
         self.ddpm_fid_flag = True if ddpm_fid_score_estimate_every is not None else False
         self.ddpm_is_flag = True if ddpm_fid_score_estimate_every is not None else False
