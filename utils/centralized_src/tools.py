@@ -61,7 +61,7 @@ class FID:
 
     def calculate_inception_features(self, samples):
         self.inception.eval()
-        samples = nn.functional.interpolate(samples, size=(299, 299), mode='bilinear')
+        samples = (nn.functional.interpolate(samples, size=(299, 299), mode='bilinear')).to(self.device)
         features = self.inception(samples)[0]
         if features.size(2) != 1 or features.size(3) != 1:
             features = adaptive_avg_pool2d(features, output_size=(1, 1))
@@ -96,7 +96,7 @@ class FID:
         stacked_fake_features = list()
         generated_samples = list() if return_sample_image else None
         for batch in tqdm(batches, desc='FID score calculation', leave=False):
-            fake_samples = sampler(batch, clip=True, min1to1=False)
+            fake_samples = sampler(batch, clip=True, min1to1=False).to(self.device)
             if return_sample_image:
                 generated_samples.append(fake_samples)
             fake_features = self.calculate_inception_features(fake_samples)
@@ -123,7 +123,7 @@ class InceptionScore(nn.Module):
     def calculate_inception_probabilities(self, samples):
         with torch.no_grad():
             # Resize to expected input size for InceptionV3 (299x299)
-            samples = nn.functional.interpolate(samples, size=(299, 299), mode='bilinear')
+            samples = nn.functional.interpolate(samples, size=(299, 299), mode='bilinear').to(self.device)
             logits = self.inception(samples)
             probabilities = softmax(logits, dim=1)
         return probabilities
