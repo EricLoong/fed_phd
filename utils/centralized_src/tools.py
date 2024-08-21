@@ -134,7 +134,7 @@ class InceptionScore(nn.Module):
         batches = num_to_groups(num_samples, self.batch_size)
         for batch_size in tqdm(batches, desc='Calculating Inception Score'):
             # Call the sampler function with the appropriate batch size
-            fake_samples = sampler(batch_size=batch_size)
+            fake_samples = sampler(batch_size=batch_size).to(self.device)
             probabilities = self.calculate_inception_probabilities(fake_samples)
             preds.append(probabilities.cpu().numpy())
 
