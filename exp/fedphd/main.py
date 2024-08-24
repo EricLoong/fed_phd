@@ -205,6 +205,7 @@ def setup_trainer(args, diffusion_model, fid_scorer, inception_scorer, ddim_samp
 
 def train_pruned_model(model,args,logger,data_info):
     device = args.device
+    model.to(device)
     group_norm_prune(model=model, args=args, logger=logger)
     if args.dataset == "cifar10":
         image_size = 32
