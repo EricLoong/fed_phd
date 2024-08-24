@@ -70,7 +70,7 @@ class GaussianDiffusion(nn.Module):
         b, c, h, w = img.shape
         assert h == self.image_size and w == self.image_size, f'height and width of image must be {self.image_size}'
         t = torch.randint(0, self.time_step, (b,), device=img.device).long()  # (b, )
-        noise = torch.randn_like(img)  # corresponds to epsilon in (14)
+        noise = torch.randn_like(img).to(self.device)  # corresponds to epsilon in (14)
         noised_image = self.q_sample(img, t, noise)  # argument inside epsilon_theta
         predicted_noise = self.unet(noised_image, t).sample  # epsilon_theta in (14)
 
