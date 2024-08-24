@@ -79,7 +79,6 @@ def group_norm_prune(args, model, logger):
     model.to(args.device)
     logger.info(
         f"Prune Ratio is {args.pruning_ratio}. MACs: {base_macs / 1e9:.4f} G -> {macs / 1e9:.4f} G, #Params: {base_nparams / 1e6:.4f} M -> {nparams / 1e6:.4f} M")
-    model.to('cpu')
     return model
 
 
