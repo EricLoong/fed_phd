@@ -16,5 +16,4 @@ python main.py --dataset 'cifar10' \
 --pruning_ratio 0.2 \
 --balance_agg_a 50000 \
 --num_edge_servers 2 \
---sparse_training \
 --tqdm

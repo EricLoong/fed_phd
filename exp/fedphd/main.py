@@ -316,7 +316,6 @@ if __name__ == "__main__":
         FedPhDAPI_initial = fedphd_api(data_info, device, args, global_model_trainer, logger)
         sparse_model = FedPhDAPI_initial.train()
         model = load_model(args, out_unet=True) # random init model
-        model = model.to('cpu')
         unet_state_dict = {k.replace('unet.', ''): v for k, v in sparse_model.items() if k.startswith('unet.')}
         print('Load sparse model state dict')
         model.load_state_dict(unet_state_dict)
