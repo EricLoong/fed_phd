@@ -148,13 +148,13 @@ def load_model(args,out_unet=False):
     #    diffusion = GaussianDiffusion(unet_cifar10, image_size=image_size).to(args.device)
     if args.dataset == "celeba":
         image_size = 64
-        unet = unet_celeba_standard
+        unet = unet_celeba_standard.to(args.device)
         #unet.to(args.device)
         # unet_celeba = Unet(dim=128,dim_multiply=(1,2,2,2),image_size=image_size,attn_resolutions=(16,),dropout=0.0,num_res_blocks=2)
         diffusion = GaussianDiffusion(unet, image_size=image_size)
     elif args.dataset == "cifar10":
         image_size = 32
-        unet = unet_cifar10_standard
+        unet = unet_cifar10_standard.to(args.device)
         #unet.to(args.device)
         diffusion = GaussianDiffusion(unet, image_size=image_size)
     else:
@@ -164,7 +164,7 @@ def load_model(args,out_unet=False):
     if out_unet:
         return unet
     else:
-        return model
+        return model.to(args.device)
 
 def setup_trainer(args, diffusion_model, fid_scorer,inception_scorer, ddim_samplers,logger):
     # Initialize the trainer with the provided arguments
