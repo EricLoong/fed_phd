@@ -228,9 +228,10 @@ class Trainer:
                     self.logger.info(f"Images generated using {sampler.sampler_name} saved.")
 
     def ddim_fid_calculation(self, current_step):
+        self.diffusion_model.to(self.device)
         with torch.no_grad():
             for sampler in self.ddim_samplers:
-                if sampler.calculate_fid and (current_step+1) % self.args.fid_freq == 0:
+                if sampler.calculate_fid and (current_step) % self.args.fid_freq == 0:
                     print(f"Calculating FID at step {current_step}")
                     sample_func = partial(sampler.sample, self.diffusion_model)
                     ddim_cur_fid, _ = self.fid_scorer.fid_score(sample_func, sampler.num_fid_sample)
@@ -241,9 +242,10 @@ class Trainer:
                             self.save_model(current_step, sampler.sampler_name, ddim_cur_fid)
 
     def ddim_inception_calculation(self, current_step):
+        self.diffusion_model.to(self.device)
         with torch.no_grad():
             for sampler in self.ddim_samplers:
-                if sampler.calculate_inception and (current_step + 1) % self.args.fid_freq == 0:
+                if sampler.calculate_inception and (current_step) % self.args.fid_freq == 0:
                     # Calculate the Inception Score at the same time of FID calculation
                     print(f"Calculating Inception Score at step {current_step}")
                     sample_func = partial(sampler.sample, self.diffusion_model)

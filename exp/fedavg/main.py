@@ -134,12 +134,14 @@ def setup_ddim_sampler(args, diffusion_model):
         'sample_every': args.sample_every,
         'calculate_fid': args.calculate_fid,
         'num_fid_sample': args.num_fid_sample,
+        'calculate_inception': args.calculate_is,
         'save': args.save
     }
 
     # Initialize the sampler and add it to a list
     ddim_sampler = [DDIM_Sampler(diffusion_model, **sampler_config)]
     return ddim_sampler
+
 
 def load_model(args,out_unet=False):
     # if args.dataset == "cifar10":
@@ -151,35 +153,36 @@ def load_model(args,out_unet=False):
         unet = unet_celeba_standard.to(args.device)
         #unet.to(args.device)
         # unet_celeba = Unet(dim=128,dim_multiply=(1,2,2,2),image_size=image_size,attn_resolutions=(16,),dropout=0.0,num_res_blocks=2)
-        diffusion = GaussianDiffusion(unet, image_size=image_size)
+        diffusion = GaussianDiffusion(unet, image_size=image_size).to(args.device)
     elif args.dataset == "cifar10":
         image_size = 32
         unet = unet_cifar10_standard.to(args.device)
         #unet.to(args.device)
-        diffusion = GaussianDiffusion(unet, image_size=image_size)
+        diffusion = GaussianDiffusion(unet, image_size=image_size).to(args.device)
     else:
         raise ValueError(f"Dataset {args.dataset} not supported")
 
-    model = diffusion
+    #model = diffusion.to(args.device)
     if out_unet:
         return unet
     else:
-        return model.to(args.device)
+        return diffusion
 
-def setup_trainer(args, diffusion_model, fid_scorer,inception_scorer, ddim_samplers,logger):
+
+def setup_trainer(args, diffusion_model, fid_scorer, inception_scorer, ddim_samplers, logger):
     # Initialize the trainer with the provided arguments
-    trainer = Trainer(args=args,logger=logger,
-        diffusion_model=diffusion_model,
-        fid_scorer=fid_scorer,
-        inception_scorer=inception_scorer,
-        batch_size=args.batch_size,
-        lr=args.lr,
-        num_samples=args.num_samples,
-        result_folder=args.results_dir,
-        cpu_percentage=args.cpu_percentage,
-        ddim_samplers=ddim_samplers,
-        clip=args.clip
-    )
+    trainer = Trainer(args=args, logger=logger,
+                      diffusion_model=diffusion_model,
+                      fid_scorer=fid_scorer,
+                      inception_scorer=inception_scorer,
+                      batch_size=args.batch_size,
+                      lr=args.lr,
+                      num_samples=args.num_samples,
+                      result_folder=args.results_dir,
+                      cpu_percentage=args.cpu_percentage,
+                      ddim_samplers=ddim_samplers,
+                      clip=args.clip
+                      )
     return trainer
 
 
