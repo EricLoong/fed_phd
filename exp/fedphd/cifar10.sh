@@ -4,7 +4,7 @@ python main.py --dataset 'cifar10' \
 --batch_size 128 \
 --lr 2e-4 \
 --epochs 1 \
---client_num_in_total 50 --frac 0.2 \
+--client_num_in_total 20 --frac 0.2 \
 --sample_every 500 \
 --comm_round 10200 \
 --seed 2023 \
@@ -13,7 +13,7 @@ python main.py --dataset 'cifar10' \
 --calculate_is \
 --aggr_freq 5 \
 --st_rounds 200 \
---pruning_ratio 0.2 \
+--pruning_ratio 0.1 \
 --balance_agg_a 50000 \
 --num_edge_servers 2 \
 --sparse_train \
