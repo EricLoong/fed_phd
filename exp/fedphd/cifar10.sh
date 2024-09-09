@@ -6,15 +6,15 @@ python main.py --dataset 'cifar10' \
 --epochs 1 \
 --client_num_in_total 20 --frac 0.2 \
 --sample_every 500 \
---comm_round 10200 \
+--comm_round 1000 \
 --seed 2023 \
 --save \
 --calculate_fid \
 --calculate_is \
 --aggr_freq 5 \
 --st_rounds 200 \
---pruning_ratio 0.1 \
+--pruning_ratio 0.0 \
 --balance_agg_a 50000 \
 --num_edge_servers 2 \
---sparse_train \
+--train_scratch \
 --tqdm
