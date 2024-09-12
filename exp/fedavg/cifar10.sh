@@ -4,7 +4,7 @@ python main.py --dataset 'cifar10' \
 --batch_size 128 \
 --lr 2e-4 \
 --epochs 5 \
---client_num_in_total 50 --frac 0.2 \
+--client_num_in_total 20 --frac 1 \
 --sample_every 500 \
 --comm_round 2000 \
 --seed 2023 \
