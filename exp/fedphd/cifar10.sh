@@ -1,6 +1,6 @@
 #!/bin/bash
 python main.py --dataset 'cifar10' \
---partition_method 'noniid-pathological' \
+--partition_method 'iid' \
 --batch_size 128 \
 --lr 2e-4 \
 --epochs 1 \
