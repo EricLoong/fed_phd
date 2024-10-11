@@ -17,5 +17,5 @@ python main.py --dataset 'celeba' \
 --balance_agg_a 20000 \
 --num_edge_servers 2 \
 --train_scratch \
---pruning_ratio 0.3 \
+--pruning_ratio 0.4 \
 --tqdm
