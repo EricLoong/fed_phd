@@ -116,6 +116,9 @@ class fedphd_api:
                     )
                     edge_samples[edge_server_idx] += client.get_sample_number()
 
+            self.logger.info('Edge Server Distributions: {}'.format(edge_server_distributions))
+            self.logger.info('Edge Server Samples: {}'.format(edge_samples))
+
             # Edge server aggregation
             for edge_idx, edge_server in enumerate(w_locals):
                 edge_sever_num_samples_temp = sum([w[0] for w in edge_server])
