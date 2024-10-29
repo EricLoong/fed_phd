@@ -154,15 +154,15 @@ class Trainer:
 
     def train(self, round_idx):
         epochs = self.args.epochs
-        gradient_accumulate_every = self.args.gradient_accumulate_every  # Define this in your args
+        gradient_accumulate_every = self.args.gradient_accumulate_every
         self.diffusion_model.to(self.device)  # Move the model to the device
 
-        # Retrieve global parameters and global control variate from server
-        global_params = {k: v.clone() for k, v in self.diffusion_model.state_dict().items()}
-        global_control_variate = {k: v.clone() for k, v in self.global_control_variate.items()}
+        # Retrieve global parameters and global control variate from server, move to the correct device
+        global_params = {k: v.clone().to(self.device) for k, v in self.diffusion_model.state_dict().items()}
+        global_control_variate = {k: v.clone().to(self.device) for k, v in self.global_control_variate.items()}
 
-        # Initialize local control variate
-        local_control_variate = {k: torch.zeros_like(v) for k, v in global_params.items()}
+        # Initialize local control variate and move it to the device
+        local_control_variate = {k: torch.zeros_like(v).to(self.device) for k, v in global_params.items()}
 
         for epoch in range(epochs):
             self.diffusion_model.train()
@@ -171,12 +171,11 @@ class Trainer:
 
             self.logger.info(f"Starting epoch {epoch + 1}/{epochs}")
 
-            for batch_idx, data in enumerate(self.dataLoader):  # Iterate through all batches
+            for batch_idx, data in enumerate(self.dataLoader):
                 if batch_idx % gradient_accumulate_every == 0:
                     self.optimizer.zero_grad()  # Reset gradients at the start of each accumulation cycle
 
                 if isinstance(data, (tuple, list)):
-                    # Dataset with labels (e.g., CIFAR10)
                     image, _ = data
                 else:
                     image = data
@@ -191,7 +190,6 @@ class Trainer:
                     local_cv = local_control_variate[name]
 
                     # Adjust parameter gradients with control variate correction
-                    # Gradient correction term for SCAFFOLD: (global_cv - local_cv) for each parameter
                     if param.grad is not None:
                         param.grad = param.grad - (global_cv - local_cv)
 
@@ -199,23 +197,20 @@ class Trainer:
                 loss = loss / gradient_accumulate_every  # Scale loss by accumulation steps
                 loss.backward()
 
-                # If we have accumulated gradients for `gradient_accumulate_every` batches
                 if (batch_idx + 1) % gradient_accumulate_every == 0 or (batch_idx + 1) == len(self.dataLoader):
                     nn.utils.clip_grad_norm_(self.diffusion_model.parameters(), self.max_grad_norm)
                     self.optimizer.step()  # Update the model parameters
 
-                    # Update local control variate based on the change in parameters
+                    # Update local control variate based on the new parameters
                     for name, param in self.diffusion_model.named_parameters():
-                        # SCAFFOLD local control variate update
-                        local_control_variate[name] += param - global_params[name]
+                        local_control_variate[name] += (param - global_params[name])
 
                     if self.scheduler:
                         self.scheduler.step()  # Step the scheduler after each accumulation cycle
 
-                epoch_loss += loss.item() * gradient_accumulate_every  # Accumulate the loss
+                epoch_loss += loss.item() * gradient_accumulate_every
                 num_batches += 1
 
-            # Calculate the average loss for the epoch
             average_loss = epoch_loss / num_batches
             self.logger.info(f"Round {round_idx} Epoch {epoch} Average Loss: {average_loss}")
 
@@ -223,11 +218,9 @@ class Trainer:
                 self.ddim_image_generation(epoch)
                 self.ddim_fid_calculation(epoch)
 
-        # Move the model back to CPU to free up GPU memory
         self.diffusion_model.to('cpu')
         torch.cuda.empty_cache()
 
-        # Return only the local control variate to the server if using SCAFFOLD
         return local_control_variate
 
     def ddim_image_generation(self, current_step):
