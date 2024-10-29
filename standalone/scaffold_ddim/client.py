@@ -33,11 +33,10 @@ class Client:
         self.model_trainer.global_control_variate = global_control_variate  # Set the global control variate
 
         # Train the model with SCAFFOLD adjustments, which now also updates the local control variate
-        self.model_trainer.train(round_idx)
+        local_control_variate=self.model_trainer.train(round_idx)
 
         # Retrieve the updated local model parameters and local control variate after training
         w_local = self.model_trainer.get_model_params()
-        local_control_variate = self.model_trainer.local_control_variate  # Newly added local control variate retrieval
 
         # Return both updated model parameters and local control variate to the server
         return w_local, local_control_variate
