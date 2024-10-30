@@ -65,7 +65,9 @@ class scaffold_api(object):
 
                 # Pass both global model and global control variate for SCAFFOLD
                 w_per, local_control_variate = client.train(copy.deepcopy(w_global),
-                                                            copy.deepcopy(global_control_variate), round_idx)
+                                                            {key: value.clone() for key, value in global_control_variate.items()},
+                                                            round_idx)
+
                 w_locals.append((client.get_sample_number(), copy.deepcopy(w_per)))
                 local_control_variates.append(
                     (client.get_sample_number(), local_control_variate))  # Collect control variates
