@@ -27,14 +27,15 @@ class scaffold_api(object):
 
     def _setup_clients(self, train_data_local_num_dict, data_map_idx):
         self.logger.info("############setup_clients (START)#############")
-        # Ensure global control variate is initialized for SCAFFOLD
-        self.model_trainer.global_control_variate = {k: torch.zeros_like(v) for k, v in
-                                                     self.model_trainer.get_model_params().items()}
+        # Initialize global control variate as deepcopy-compatible tensors
+        self.model_trainer.global_control_variate = {
+            k: v.clone().detach() for k, v in self.model_trainer.get_model_params().items()
+        }
 
         for client_idx in range(self.args.client_num_in_total):
-            c = Client(client_idx, train_data_local_num_dict[client_idx], self.args, self.device, self.model_trainer,
-                       self.logger, data_indices=data_map_idx[client_idx])
-            self.client_list.append(c)
+            client = Client(client_idx, train_data_local_num_dict[client_idx], self.args, self.device,
+                            self.model_trainer, self.logger, data_indices=data_map_idx[client_idx])
+            self.client_list.append(client)
         self.logger.info("############setup_clients (END)#############")
 
     def train(self):
@@ -65,7 +66,7 @@ class scaffold_api(object):
 
                 # Pass both global model and global control variate for SCAFFOLD
                 w_per, local_control_variate = client.train(copy.deepcopy(w_global),
-                                                            {key: value.clone() for key, value in global_control_variate.items()},
+                                                             copy.deepcopy(global_control_variate),
                                                             round_idx)
 
                 w_locals.append((client.get_sample_number(), copy.deepcopy(w_per)))

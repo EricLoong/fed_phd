@@ -175,6 +175,7 @@ class Trainer:
                 if batch_idx % gradient_accumulate_every == 0:
                     self.optimizer.zero_grad()  # Reset gradients at the start of each accumulation cycle
 
+                # Prepare input data
                 if isinstance(data, (tuple, list)):
                     image, _ = data
                 else:
@@ -183,44 +184,51 @@ class Trainer:
                 image = image.to(self.device)
                 loss = self.diffusion_model(image)
 
-                # Apply control variate correction for SCAFFOLD
-                for name, param in self.diffusion_model.named_parameters():
-                    global_param = global_params[name]
-                    global_cv = global_control_variate[name]
-                    local_cv = local_control_variate[name]
-
-                    # Adjust parameter gradients with control variate correction
-                    if param.grad is not None:
-                        param.grad = param.grad - (global_cv - local_cv)
-
-                # Accumulate gradients as usual
-                loss = loss / gradient_accumulate_every  # Scale loss by accumulation steps
+                # Scale loss by accumulation steps before applying backward
+                loss = loss / gradient_accumulate_every
                 loss.backward()
 
+                # Apply control variate correction for SCAFFOLD
+                with torch.no_grad():  # Ensure no gradients are computed on control variate corrections
+                    for name, param in self.diffusion_model.named_parameters():
+                        if param.grad is not None:
+                            global_cv = global_control_variate[name]
+                            local_cv = local_control_variate[name]
+                            # Adjust gradients with control variate correction
+                            param.grad -= (global_cv - local_cv)
+
+                # Gradient accumulation step
                 if (batch_idx + 1) % gradient_accumulate_every == 0 or (batch_idx + 1) == len(self.dataLoader):
                     nn.utils.clip_grad_norm_(self.diffusion_model.parameters(), self.max_grad_norm)
                     self.optimizer.step()  # Update the model parameters
 
-                    # Update local control variate based on the new parameters
-                    for name, param in self.diffusion_model.named_parameters():
-                        local_control_variate[name] += (param - global_params[name])
+                    # Update local control variate with the change in parameters
+                    with torch.no_grad():
+                        for name, param in self.diffusion_model.named_parameters():
+                            local_control_variate[name] += (param - global_params[name])
 
+                    # Step the learning rate scheduler if defined
                     if self.scheduler:
-                        self.scheduler.step()  # Step the scheduler after each accumulation cycle
+                        self.scheduler.step()
 
+                # Accumulate loss for reporting
                 epoch_loss += loss.item() * gradient_accumulate_every
                 num_batches += 1
 
+            # Calculate and log the average loss for the epoch
             average_loss = epoch_loss / num_batches
             self.logger.info(f"Round {round_idx} Epoch {epoch} Average Loss: {average_loss}")
 
+            # Optional central training evaluation
             if self.args.central_train:
                 self.ddim_image_generation(epoch)
                 self.ddim_fid_calculation(epoch)
 
+        # Move model back to CPU and clear GPU cache
         self.diffusion_model.to('cpu')
         torch.cuda.empty_cache()
 
+        # Return the local control variate after training
         return local_control_variate
 
     def ddim_image_generation(self, current_step):
