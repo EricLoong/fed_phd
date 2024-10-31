@@ -153,16 +153,18 @@ class scaffold_api(object):
         return w_global
 
     def _aggregate_control_variates(self, local_control_variates):
+        # Calculate the total number of samples across all clients
         training_num = sum(num_samples for num_samples, _ in local_control_variates)
         global_control_variate = {}
 
-        # Initialize global control variate aggregation
-        for _, control_variate in local_control_variates:
-            for k in control_variate.keys():
+        # Initialize the global control variate by aggregating each local control variate
+        for sample_num, control_variate in local_control_variates:
+            weight = sample_num / training_num  # Compute the weight for this client's contribution
+            for k, v in control_variate.items():
                 if k not in global_control_variate:
-                    global_control_variate[k] = control_variate[k] * (_ / training_num)
+                    global_control_variate[k] = v * weight
                 else:
-                    global_control_variate[k] += control_variate[k] * (_ / training_num)
+                    global_control_variate[k] += v * weight
 
         return global_control_variate
 
