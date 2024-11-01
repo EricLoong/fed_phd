@@ -188,6 +188,14 @@ class Trainer:
                 loss = loss / gradient_accumulate_every
                 loss.backward()
 
+                # Check for NaN or Inf in gradients
+                for name, param in self.diffusion_model.named_parameters():
+                    if param.grad is not None:
+                        if torch.isnan(param.grad).any() or torch.isinf(param.grad).any():
+                            self.logger.error(
+                                f"NaN or Inf detected in gradients: {name} at batch {batch_idx}, epoch {epoch}")
+                            return local_control_variate  # Early exit if NaN or Inf is detected
+
                 # Apply control variate correction for SCAFFOLD
                 with torch.no_grad():  # Ensure no gradients are computed on control variate corrections
                     for name, param in self.diffusion_model.named_parameters():
@@ -199,6 +207,7 @@ class Trainer:
 
                 # Gradient accumulation step
                 if (batch_idx + 1) % gradient_accumulate_every == 0 or (batch_idx + 1) == len(self.dataLoader):
+                    # Clip gradients to avoid exploding gradients
                     nn.utils.clip_grad_norm_(self.diffusion_model.parameters(), self.max_grad_norm)
                     self.optimizer.step()  # Update the model parameters
 
