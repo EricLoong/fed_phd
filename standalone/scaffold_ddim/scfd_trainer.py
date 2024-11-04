@@ -154,7 +154,7 @@ class Trainer:
 
     def train(self, round_idx):
         epochs = self.args.epochs
-        gradient_accumulate_every = self.args.gradient_accumulate_every
+        gradient_accumulate_every = 1  # Disable gradient accumulation temporarily for debugging
         self.diffusion_model.to(self.device)  # Move the model to the device
 
         # Retrieve global parameters and global control variate from server, move to the correct device
@@ -172,8 +172,7 @@ class Trainer:
             self.logger.info(f"Starting epoch {epoch + 1}/{epochs}")
 
             for batch_idx, data in enumerate(self.dataLoader):
-                if batch_idx % gradient_accumulate_every == 0:
-                    self.optimizer.zero_grad()  # Reset gradients at the start of each accumulation cycle
+                self.optimizer.zero_grad()  # Reset gradients at the start of each step
 
                 # Prepare input data
                 if isinstance(data, (tuple, list)):
@@ -184,8 +183,11 @@ class Trainer:
                 image = image.to(self.device)
                 loss = self.diffusion_model(image)
 
+                if torch.isnan(loss) or torch.isinf(loss):
+                    self.logger.error(f"NaN or Inf detected in loss at batch {batch_idx}, epoch {epoch}")
+                    return local_control_variate  # Early exit if NaN or Inf is detected
+
                 # Scale loss by accumulation steps before applying backward
-                loss = loss / gradient_accumulate_every
                 loss.backward()
 
                 # Check for NaN or Inf in gradients
@@ -196,32 +198,17 @@ class Trainer:
                                 f"NaN or Inf detected in gradients: {name} at batch {batch_idx}, epoch {epoch}")
                             return local_control_variate  # Early exit if NaN or Inf is detected
 
-                # Apply control variate correction for SCAFFOLD
-                with torch.no_grad():  # Ensure no gradients are computed on control variate corrections
+                # Clip gradients to avoid exploding gradients
+                nn.utils.clip_grad_norm_(self.diffusion_model.parameters(), self.max_grad_norm)
+                self.optimizer.step()  # Update the model parameters
+
+                # Update local control variate with the change in parameters
+                with torch.no_grad():
                     for name, param in self.diffusion_model.named_parameters():
-                        if param.grad is not None:
-                            global_cv = global_control_variate[name]
-                            local_cv = local_control_variate[name]
-                            # Adjust gradients with control variate correction
-                            param.grad -= (global_cv - local_cv)
-
-                # Gradient accumulation step
-                if (batch_idx + 1) % gradient_accumulate_every == 0 or (batch_idx + 1) == len(self.dataLoader):
-                    # Clip gradients to avoid exploding gradients
-                    nn.utils.clip_grad_norm_(self.diffusion_model.parameters(), self.max_grad_norm)
-                    self.optimizer.step()  # Update the model parameters
-
-                    # Update local control variate with the change in parameters
-                    with torch.no_grad():
-                        for name, param in self.diffusion_model.named_parameters():
-                            local_control_variate[name] += (param - global_params[name])
-
-                    # Step the learning rate scheduler if defined
-                    if self.scheduler:
-                        self.scheduler.step()
+                        local_control_variate[name] += (param - global_params[name])
 
                 # Accumulate loss for reporting
-                epoch_loss += loss.item() * gradient_accumulate_every
+                epoch_loss += loss.item()
                 num_batches += 1
 
             # Calculate and log the average loss for the epoch
@@ -239,6 +226,7 @@ class Trainer:
 
         # Return the local control variate after training
         return local_control_variate
+
 
     def ddim_image_generation(self, current_step):
         with torch.no_grad():
