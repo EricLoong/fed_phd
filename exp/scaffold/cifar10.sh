@@ -6,7 +6,7 @@ python main.py --dataset 'cifar10' \
 --epochs 5 \
 --client_num_in_total 20 --frac 0.2 \
 --sample_every 500 \
---comm_round 2000 \
+--comm_round 10000 \
 --seed 2023 \
 --save \
 --calculate_fid \
