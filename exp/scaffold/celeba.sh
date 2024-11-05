@@ -7,7 +7,7 @@ python main.py --dataset 'celeba' \
 --client_num_in_total 20 --frac 0.2 \
 --fid_freq 100 \
 --sample_every 100 \
---comm_round 1000 \
+--comm_round 5000 \
 --seed 2023 \
 --save \
 --prox \
