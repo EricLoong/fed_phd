@@ -11,5 +11,5 @@ python main.py --dataset 'cifar10' \
 --save \
 --calculate_fid \
 --prox \
---mu 0.001 \
+--mu 1 \
 --tqdm
