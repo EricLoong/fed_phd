@@ -169,6 +169,12 @@ class Trainer:
         # Move global control variates to the correct device
         global_control_variate = {k: v.clone().to(self.device) for k, v in self.global_control_variate.items()}
         local_control_variate = {k: v.clone().to(self.device) for k, v in self.local_control_variate.items()}
+        for name, param in self.diffusion_model.named_parameters():
+            print(f"Parameter: {name}, Shape: {param.shape}")
+        for name, control in global_control_variate.items():
+            print(f"Global Control: {name}, Shape: {control.shape}")
+        for name, control in local_control_variate.items():
+            print(f"Local Control: {name}, Shape: {control.shape}")
 
         # Make a copy of the initial model to track parameter changes
         initial_model_params = copy.deepcopy(self.diffusion_model.state_dict())
