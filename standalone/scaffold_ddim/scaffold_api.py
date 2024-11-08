@@ -28,9 +28,11 @@ class ScaffoldAPI:
 
     def _setup_clients(self, train_data_local_num_dict, data_map_idx):
         self.logger.info("############ Setup Clients (START) #############")
-        # Initialize global control variate as deepcopy-compatible tensors
+
+        # Initialize global control variate on CPU
         self.model_trainer.global_control_variate = {
-            k: v.clone().detach() for k, v in self.model_trainer.get_model_params().items()
+            k: v.clone().detach().cpu()
+            for k, v in self.model_trainer.get_model_params().items()
         }
 
         for client_idx in range(self.args.client_num_in_total):
@@ -44,10 +46,13 @@ class ScaffoldAPI:
                 data_indices=data_map_idx[client_idx]
             )
             self.client_list.append(client)
-            # Initialize each client's control variate with zeros
+
+            # Initialize client control variates on CPU
             self.client_control_variates[client_idx] = {
-                k: torch.zeros_like(v) for k, v in self.model_trainer.get_model_params().items()
+                k: torch.zeros_like(v).cpu()
+                for k, v in self.model_trainer.get_model_params().items()
             }
+
         self.logger.info("############ Setup Clients (END) #############")
 
     def train(self):
