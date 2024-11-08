@@ -206,11 +206,22 @@ class Trainer:
         # Calculate the delta between the final model and the initial global model
         delta_w = {name: param - global_params[name] for name, param in self.diffusion_model.state_dict().items()}
 
+        # Update local control variate according to the SCAFFOLD formula
+        K = epochs  # Number of local epochs, as specified in the SCAFFOLD paper
+        eta_l = self.optimizer.param_groups[0]['lr']  # Local learning rate
+
+        for name in local_control_variate.keys():
+            local_control_variate[name] = (
+                    local_control_variate[name]
+                    - global_control_variate[name]
+                    + (1 / (K * eta_l)) * (global_params[name] - self.diffusion_model.state_dict()[name])
+            )
+
         # Move model back to CPU and clear GPU cache
         self.diffusion_model.to('cpu')
         torch.cuda.empty_cache()
 
-        # Return the delta and the final local control variate after training
+        # Return the delta and the updated local control variate after training
         return delta_w, local_control_variate
 
     def ddim_image_generation(self, current_step):

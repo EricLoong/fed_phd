@@ -103,20 +103,23 @@ class ScaffoldAPI:
         return client_indexes
 
     def _apply_global_update(self, w_global, delta_w_locals):
+        # Ensure all tensors are on the same device as w_global
+        device = next(iter(w_global.values())).device  # Get the device of w_global tensors
+
         training_num = sum(sample_num for sample_num, _ in delta_w_locals)
 
-        # Initialize delta to apply to global model
-        delta_w_global = {k: torch.zeros_like(v) for k, v in w_global.items()}
+        # Initialize delta to apply to global model, ensuring it's on the correct device
+        delta_w_global = {k: torch.zeros_like(v).to(device) for k, v in w_global.items()}
 
         # Aggregate deltas
         for sample_num, delta_params in delta_w_locals:
             weight = sample_num / training_num
             for k in delta_params.keys():
-                delta_w_global[k] += delta_params[k] * weight
+                delta_w_global[k] += delta_params[k].to(device) * weight  # Ensure delta_params[k] is on the same device
 
         # Apply the aggregated delta to the global model
         for k in w_global.keys():
-            w_global[k] += delta_w_global[k]
+            w_global[k] = w_global[k].to(device) + delta_w_global[k]
 
         return w_global
 
