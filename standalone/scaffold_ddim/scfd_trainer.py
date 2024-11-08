@@ -16,6 +16,8 @@ from termcolor import colored
 from utils.centralized_src.tools import num_to_groups
 import numpy as np
 from torch.optim.lr_scheduler import LambdaLR
+from standalone.scaffold_ddim.ScaffoldOptimizer import ScaffoldOptimizer
+from torch.optim.lr_scheduler import StepLR
 
 def cycle_with_label(dl):
     while True:
@@ -62,7 +64,13 @@ class Trainer:
         self.tensorboard_name = None
         self.writer = None
         self.global_step = 0
+        # Control variates for SCAFFOLD
         self.global_control_variate = {k: torch.zeros_like(v) for k, v in diffusion_model.state_dict().items()}
+        self.local_control_variate = {k: torch.zeros_like(v) for k, v in diffusion_model.state_dict().items()}
+
+        # Use ScaffoldOptimizer
+        self.optimizer = ScaffoldOptimizer(self.diffusion_model.parameters(), lr=lr, weight_decay=0)
+        self.lr_step = StepLR(self.optimizer, step_size=5, gamma=0.1)
         #self.fid_score_log = dict()
         assert clip in [True, False, 'both'], "clip must be one of [True, False, 'both']"
         if clip is True or clip == 'both':
@@ -70,15 +78,15 @@ class Trainer:
         if clip is False or clip == 'both':
             os.makedirs(os.path.join(self.ddpm_result_folder, 'no_clip'), exist_ok=True)
         os.makedirs(self.result_folder, exist_ok=True)
-        self.optimizer = Adam(self.diffusion_model.parameters(), lr=lr)
+        #self.optimizer = Adam(self.diffusion_model.parameters(), lr=lr)
 
-        if self.args.warmup_steps > 0:
-            self.scheduler = LambdaLR(
-                self.optimizer,
-                lr_lambda=lambda step: min((step + 1) / self.args.warmup_steps, 1.0)
-            )
-        else:
-            self.scheduler = None
+        #if self.args.warmup_steps > 0:
+        #    self.scheduler = LambdaLR(
+        #        self.optimizer,
+        #        lr_lambda=lambda step: min((step + 1) / self.args.warmup_steps, 1.0)
+        #    )
+        #else:
+        #    self.scheduler = None
 
         # DDIM sampler setting
         self.ddim_sampling_schedule = list()
@@ -152,22 +160,23 @@ class Trainer:
     def set_id(self, trainer_id):
         self.id = trainer_id
 
+
     def train(self, round_idx):
         epochs = self.args.epochs
-        gradient_accumulate_every = 1  # Disable gradient accumulation temporarily for debugging
-        self.diffusion_model.to(self.device)  # Move the model to the device
+        gradient_accumulate_every = 1
+        self.diffusion_model.to(self.device)
 
-        # Retrieve global parameters and global control variate from server, move to the correct device
-        global_params = {k: v.clone().to(self.device) for k, v in self.diffusion_model.state_dict().items()}
+        # Move global control variates to the correct device
         global_control_variate = {k: v.clone().to(self.device) for k, v in self.global_control_variate.items()}
+        local_control_variate = {k: v.clone().to(self.device) for k, v in self.local_control_variate.items()}
 
-        # Initialize local control variate and move it to the device
-        local_control_variate = {k: torch.zeros_like(v).to(self.device) for k, v in global_params.items()}
+        # Make a copy of the initial model to track parameter changes
+        initial_model_params = copy.deepcopy(self.diffusion_model.state_dict())
 
         for epoch in range(epochs):
             self.diffusion_model.train()
-            epoch_loss = 0  # Initialize variable to accumulate loss
-            num_batches = 0  # To count the number of batches
+            epoch_loss = 0
+            num_batches = 0
 
             self.logger.info(f"Starting epoch {epoch + 1}/{epochs}")
 
@@ -185,47 +194,32 @@ class Trainer:
 
                 if torch.isnan(loss) or torch.isinf(loss):
                     self.logger.error(f"NaN or Inf detected in loss at batch {batch_idx}, epoch {epoch}")
-                    return local_control_variate  # Early exit if NaN or Inf is detected
+                    return local_control_variate
 
-                # Scale loss by accumulation steps before applying backward
+                # Backward pass to calculate gradients
                 loss.backward()
 
-                # Check for NaN or Inf in gradients
-                for name, param in self.diffusion_model.named_parameters():
-                    if param.grad is not None:
-                        if torch.isnan(param.grad).any() or torch.isinf(param.grad).any():
-                            self.logger.error(
-                                f"NaN or Inf detected in gradients: {name} at batch {batch_idx}, epoch {epoch}")
-                            return local_control_variate  # Early exit if NaN or Inf is detected
-
-                # Clip gradients to avoid exploding gradients
-                nn.utils.clip_grad_norm_(self.diffusion_model.parameters(), self.max_grad_norm)
-                self.optimizer.step()  # Update the model parameters
-
-                # Update local control variate with the change in parameters
-                with torch.no_grad():
-                    for name, param in self.diffusion_model.named_parameters():
-                        local_control_variate[name] += (param - global_params[name])
+                # Apply ScaffoldOptimizer step with control variates
+                self.optimizer.step(server_controls=global_control_variate, client_controls=local_control_variate)
 
                 # Accumulate loss for reporting
                 epoch_loss += loss.item()
                 num_batches += 1
 
+            # Apply learning rate decay
+            self.lr_step.step()
+
             # Calculate and log the average loss for the epoch
             average_loss = epoch_loss / num_batches
             self.logger.info(f"Round {round_idx} Epoch {epoch} Average Loss: {average_loss}")
 
-            # Optional central training evaluation
-            if self.args.central_train:
-                self.ddim_image_generation(epoch)
-                self.ddim_fid_calculation(epoch)
+        # Calculate parameter changes after all epochs
+        with torch.no_grad():
+            local_steps = epochs * len(self.dataLoader)
+            for k, v in self.diffusion_model.named_parameters():
+                self.local_control_variate[k] += (initial_model_params[k] - v.data) / (local_steps * self.lr)
 
-        # Move model back to CPU and clear GPU cache
-        self.diffusion_model.to('cpu')
-        torch.cuda.empty_cache()
-
-        # Return the local control variate after training
-        return local_control_variate
+        return self.local_control_variate
 
 
     def ddim_image_generation(self, current_step):
