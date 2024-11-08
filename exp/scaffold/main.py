@@ -29,7 +29,7 @@ from utils.centralized_src.diffusers_unet import unet_cifar10_standard, unet_cel
 from utils.centralized_src.tools import Config,setup_fid_scorer,setup_inception_scorer
 from utils.data.cifar10 import partition_data_indices_cifar10
 from utils.data.celeba import partition_data_indices_celeba
-from standalone.scaffold_ddim.scaffold_api import scaffold_api
+from standalone.scaffold_ddim.scaffold_api import ScaffoldAPI
 from standalone.scaffold_ddim.scfd_trainer import Trainer
 from datetime import datetime
 
@@ -250,5 +250,5 @@ if __name__ == "__main__":
         raise ValueError(f"Dataset {args.dataset} not supported")
 
     # Initialize and run scaffold_api
-    ScaffoldAPI = scaffold_api(data_info, device, args, global_model_trainer, logger)
+    ScaffoldAPI = ScaffoldAPI(data_info, device, args, global_model_trainer, logger)
     final_global_model = ScaffoldAPI.train()
