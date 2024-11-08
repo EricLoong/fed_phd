@@ -64,16 +64,13 @@ class Trainer:
         self.tensorboard_name = None
         self.writer = None
         self.global_step = 0
-        # Control variates for SCAFFOLD
         # Initialize control variates to match parameter shapes exactly
-        self.global_control_variate = {}
-        self.local_control_variate = {}
-        for name, param in diffusion_model.named_parameters():
-            self.global_control_variate[name] = torch.zeros_like(param)
-            self.local_control_variate[name] = torch.zeros_like(param)
+        self.global_control_variate = {name: torch.zeros_like(param) for name, param in diffusion_model.named_parameters()}
+        self.local_control_variate = {name: torch.zeros_like(param) for name, param in diffusion_model.named_parameters()}
 
-        # Use ScaffoldOptimizer
-        self.optimizer = ScaffoldOptimizer(self.diffusion_model.parameters(), lr=lr, weight_decay=0)
+        # Use ScaffoldOptimizer with named parameters
+        named_params = [{"params": param, "name": name} for name, param in diffusion_model.named_parameters()]
+        self.optimizer = ScaffoldOptimizer(named_params, lr=lr, weight_decay=0)
         self.lr_step = StepLR(self.optimizer, step_size=5, gamma=0.1)
         #self.fid_score_log = dict()
         assert clip in [True, False, 'both'], "clip must be one of [True, False, 'both']"

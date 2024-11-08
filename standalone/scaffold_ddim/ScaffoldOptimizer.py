@@ -20,15 +20,15 @@ class ScaffoldOptimizer(Optimizer):
 
         # Iterate over parameter groups and parameters
         for group in self.param_groups:
-            for p in group['params']:
+            for p, param_name in zip(group['params'], group['name']):
                 if p.grad is None:
                     continue
 
                 # Retrieve control variates by parameter name
-                param_name = next(n for n, param in server_controls.items() if param is p)
+                c = server_controls[param_name]
+                ci = client_controls[param_name]
 
                 # Check for shape alignment and apply control variate
-                c, ci = server_controls[param_name], client_controls[param_name]
                 if p.shape != c.shape or p.shape != ci.shape:
                     raise RuntimeError(f"Shape mismatch: parameter shape {p.shape}, server control shape {c.shape}, "
                                        f"client control shape {ci.shape}")
@@ -37,4 +37,3 @@ class ScaffoldOptimizer(Optimizer):
                 p.data = p.data - dp * group['lr']
 
         return loss
-
