@@ -61,6 +61,7 @@ class ScaffoldAPI:
 
             client_indexes = self._client_sampling(round_idx, self.args.client_num_in_total,
                                                    self.args.client_num_per_round)
+            sampled_client_count = len(client_indexes)  # Number of clients sampled in this round
 
             for client_idx in client_indexes:
                 client = self.client_list[client_idx]
@@ -68,7 +69,7 @@ class ScaffoldAPI:
                 # Retrieve the stored control variate for this client
                 local_control_variate = self.client_control_variates[client_idx]
 
-                # Train client and get model delta and updated control variate delta
+                # Train client and get model delta, control variate delta, and updated local control variate
                 delta_w, delta_c, updated_local_control_variate = client.train(
                     w_global, global_control_variate, local_control_variate, round_idx
                 )
@@ -81,7 +82,7 @@ class ScaffoldAPI:
 
             # Aggregate model updates and control variates
             w_global = self._apply_global_update(w_global, delta_w_locals)
-            global_control_variate = self._aggregate_control_variates(delta_c_locals)
+            global_control_variate = self._aggregate_control_variates(delta_c_locals, sampled_client_count)
 
             # Update global parameters
             self.model_trainer.set_model_params(w_global)
