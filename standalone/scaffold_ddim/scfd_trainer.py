@@ -154,10 +154,9 @@ class Trainer:
 
     def train(self, round_idx):
         epochs = self.args.epochs
-        gradient_accumulate_every = 1  # Disable gradient accumulation temporarily for debugging
         self.diffusion_model.to(self.device)  # Move the model to the device
 
-        # Retrieve global parameters and global control variate from server, move to the correct device
+        # Retrieve global parameters and global control variate from the server, move to the correct device
         global_params = {k: v.clone().to(self.device) for k, v in self.diffusion_model.state_dict().items()}
         global_control_variate = {k: v.clone().to(self.device) for k, v in self.global_control_variate.items()}
 
@@ -182,37 +181,19 @@ class Trainer:
 
                 image = image.to(self.device)
                 loss = self.diffusion_model(image)
-
-                if torch.isnan(loss) or torch.isinf(loss):
-                    self.logger.error(f"NaN or Inf detected in loss at batch {batch_idx}, epoch {epoch}")
-                    return local_control_variate  # Early exit if NaN or Inf is detected
-
-                # Scale loss by accumulation steps before applying backward
                 loss.backward()
 
-                # Check for NaN or Inf in gradients
+                # Adjust gradient with global and local control variates
                 for name, param in self.diffusion_model.named_parameters():
                     if param.grad is not None:
-                        if torch.isnan(param.grad).any() or torch.isinf(param.grad).any():
-                            self.logger.error(
-                                f"NaN or Inf detected in gradients: {name} at batch {batch_idx}, epoch {epoch}")
-                            return local_control_variate  # Early exit if NaN or Inf is detected
-
-                # Clip gradients to avoid exploding gradients
-                nn.utils.clip_grad_norm_(self.diffusion_model.parameters(), self.max_grad_norm)
-
-                # Apply global and local control variates to the optimizer step
-                for name, param in self.diffusion_model.named_parameters():
-                    if param.grad is not None:
-                        # Adjust gradient by the global and local control variates
                         param.grad.data += global_control_variate[name] - local_control_variate[name]
 
-                self.optimizer.step()  # Update the model parameters
+                # Clip gradients to prevent explosion
+                nn.utils.clip_grad_norm_(self.diffusion_model.parameters(), self.max_grad_norm)
 
-                # Update local control variate with the change in parameters
-                with torch.no_grad():
-                    for name, param in self.diffusion_model.named_parameters():
-                        local_control_variate[name] += (param - global_params[name])
+                self.optimizer.step()  # Update the model parameters
+                if self.scheduler:
+                    self.scheduler.step()  # Step the scheduler if defined
 
                 # Accumulate loss for reporting
                 epoch_loss += loss.item()
@@ -222,12 +203,15 @@ class Trainer:
             average_loss = epoch_loss / num_batches
             self.logger.info(f"Round {round_idx} Epoch {epoch} Average Loss: {average_loss}")
 
+        # Calculate the delta between the final model and the initial global model
+        delta_w = {name: param - global_params[name] for name, param in self.diffusion_model.state_dict().items()}
+
         # Move model back to CPU and clear GPU cache
         self.diffusion_model.to('cpu')
         torch.cuda.empty_cache()
 
-        # Return the local control variate after training
-        return local_control_variate
+        # Return the delta and the final local control variate after training
+        return delta_w, local_control_variate
 
     def ddim_image_generation(self, current_step):
         with torch.no_grad():

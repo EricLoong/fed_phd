@@ -9,9 +9,9 @@ from standalone.scaffold_ddim.scfd_trainer import Trainer
 import torchvision
 from standalone.scaffold_ddim.client import Client
 from pathlib import Path
-import math
+from tqdm import tqdm
 
-class scaffold_api(object):
+class ScaffoldAPI:
     def __init__(self, dataset_info, device, args, model_trainer, logger):
         self.logger = logger
         self.device = device
@@ -26,162 +26,125 @@ class scaffold_api(object):
         self.best_fid = float('inf')
 
     def _setup_clients(self, train_data_local_num_dict, data_map_idx):
-        self.logger.info("############setup_clients (START)#############")
-        # Initialize global control variate as deepcopy-compatible tensors
+        self.logger.info("############ Setup Clients (START) #############")
+        # Initialize global control variate with cloned model parameters
         self.model_trainer.global_control_variate = {
             k: v.clone().detach() for k, v in self.model_trainer.get_model_params().items()
         }
 
         for client_idx in range(self.args.client_num_in_total):
-            client = Client(client_idx, train_data_local_num_dict[client_idx], self.args, self.device,
-                            self.model_trainer, self.logger, data_indices=data_map_idx[client_idx])
+            client = Client(
+                client_idx,
+                train_data_local_num_dict[client_idx],
+                self.args,
+                self.device,
+                self.model_trainer,
+                self.logger,
+                data_indices=data_map_idx[client_idx]
+            )
             self.client_list.append(client)
-        self.logger.info("############setup_clients (END)#############")
+        self.logger.info("############ Setup Clients (END) #############")
 
     def train(self):
         w_global = self.model_trainer.get_model_params()
-        # Initialize global control variate for SCAFFOLD
         global_control_variate = self.model_trainer.global_control_variate
 
-        if not self.args.tqdm:
-            comm_round_iterable = range(self.args.comm_round)
-        else:
-            from tqdm import tqdm
-            comm_round_iterable = tqdm(range(self.args.comm_round), desc="Comm. Rounds", ncols=100)
+        comm_round_iterable = (
+            range(self.args.comm_round)
+            if not self.args.tqdm
+            else tqdm(range(self.args.comm_round), desc="Comm. Rounds", ncols=100)
+        )
 
         for round_idx in comm_round_iterable:
-            self.logger.info("################Communication round : {}".format(round_idx))
-            w_locals = []
-            local_control_variates = []  # To collect control variates from clients
+            self.logger.info(f"################ Communication Round : {round_idx}")
+            delta_w_locals = []
+            local_control_variates = []
 
-            client_indexes = self._client_sampling(round_idx, self.args.client_num_in_total,
-                                                   self.args.client_num_per_round)
+            client_indexes = self._client_sampling(round_idx, self.args.client_num_in_total, self.args.client_num_per_round)
             client_indexes = np.sort(client_indexes)
-
             self.logger.info("client_indexes = " + str(client_indexes))
 
             for cur_clnt in client_indexes:
-                self.logger.info('@@@@@@@@@@@@@@@@ Training Client CM({}): {}'.format(round_idx, cur_clnt))
+                self.logger.info(f'@@@@@@@@@@@@@@@@ Training Client CM({round_idx}): {cur_clnt}')
                 client = self.client_list[cur_clnt]
 
-                # Pass both global model and global control variate for SCAFFOLD
-                w_per, local_control_variate = client.train(copy.deepcopy(w_global),
-                                                             copy.deepcopy(global_control_variate),
-                                                            round_idx)
-
-                w_locals.append((client.get_sample_number(), copy.deepcopy(w_per)))
-                local_control_variates.append(
-                    (client.get_sample_number(), local_control_variate))  # Collect control variates
-                del w_per
+                # Train client and collect delta updates
+                delta_w_per, local_control_variate = client.train(
+                    copy.deepcopy(w_global),
+                    copy.deepcopy(global_control_variate),
+                    round_idx
+                )
+                delta_w_locals.append((client.get_sample_number(), copy.deepcopy(delta_w_per)))
+                local_control_variates.append((client.get_sample_number(), local_control_variate))
+                del delta_w_per
                 torch.cuda.empty_cache()
 
-            # Update global model weights
-            w_global = self._aggregate(w_locals)
-
-            # Update global control variate by aggregating local control variates
-            global_control_variate = self._aggregate_control_variates(local_control_variates)
+            # Aggregate model deltas and control variates
+            w_global = self._apply_global_update(w_global, delta_w_locals)
+            global_control_variate = self._aggregate_control_variates(local_control_variates, len(client_indexes))
 
             self.global_evaluation(w_global, round_idx=round_idx)
             torch.cuda.empty_cache()
         return w_global
 
     def global_evaluation(self, w_global, round_idx):
-        # Load global model weights for testing and inference
         self.model_trainer.set_model_params(copy.deepcopy(w_global))
         self.model_trainer.ddim_fid_calculation(round_idx)
         self.model_trainer.ddim_image_generation(round_idx)
 
-    def _check_sampler(self,before=False):
-        model_updated = self.model_trainer.get_model_params()
-        sampler_params = self.model_trainer.fid_scorer_no_ema.sampler.state_dict()
-
-        total_difference = 0.0
-        for param_name in model_updated.keys():
-            if param_name in sampler_params:
-                # Calculate the sum of absolute differences
-                diff = torch.sum(torch.abs(model_updated[param_name] - sampler_params[param_name]))
-                total_difference += diff.item()
-                #print(f"Difference in {param_name}: {diff.item()}")
-        if before:
-            print(f"Total parameter difference before update: {total_difference}")
+    def _client_sampling(self, round_idx, client_num_in_total, client_num_per_round):
+        if client_num_in_total == client_num_per_round:
+            client_indexes = list(range(client_num_in_total))
         else:
-            print(f"Total parameter difference after update: {total_difference}")
-        return total_difference
+            num_clients = min(client_num_per_round, client_num_in_total)
+            np.random.seed(round_idx)
+            client_indexes = np.random.choice(range(client_num_in_total), num_clients, replace=False)
+        self.logger.info("client_indexes = %s" % str(client_indexes))
+        return client_indexes
+
+    def _apply_global_update(self, w_global, delta_w_locals):
+        training_num = sum(sample_num for sample_num, _ in delta_w_locals)
+
+        # Initialize delta to apply to global model
+        delta_w_global = {k: torch.zeros_like(v) for k, v in w_global.items()}
+
+        # Aggregate deltas
+        for sample_num, delta_params in delta_w_locals:
+            weight = sample_num / training_num
+            for k in delta_params.keys():
+                delta_w_global[k] += delta_params[k] * weight
+
+        # Apply the aggregated delta to the global model
+        for k in w_global.keys():
+            w_global[k] += delta_w_global[k]
+
+        return w_global
+
+    def _aggregate_control_variates(self, local_control_variates, sampled_client_count):
+        training_num = sum(num_samples for num_samples, _ in local_control_variates)
+        global_control_variate = {}
+
+        for sample_num, control_variate in local_control_variates:
+            weight = sample_num / training_num
+            for k, v in control_variate.items():
+                global_control_variate[k] = global_control_variate.get(k, 0) + v * weight
+
+        # Scale by S/N to adjust the aggregated control variates
+        scaling_factor = sampled_client_count / self.args.client_num_in_total
+        for k in global_control_variate:
+            global_control_variate[k] *= scaling_factor
+
+        return global_control_variate
 
     def save_model_checkpoint(self, w_global, round_idx):
         save_path = self.results_folder / f'global_model_{round_idx}.pt'
         torch.save(w_global, save_path)
         print(f"Saved global model checkpoint at: {save_path}")
 
-    def generate_and_save_samples(self, trainer, round_idx):
-        trainer.ema.ema_model.eval()  # Ensure the model is in evaluation mode for sampling
-        with torch.inference_mode():
-            # Assuming 'sample' returns a tensor of shape (batch_size, channels, height, width)
-            samples = trainer.ema.ema_model.sample(batch_size=16)
-
-            # Combining all sampled images into a single image grid
-            nrow = 4  # Number of images per row and column
-            save_path = self.results_folder / f'samples_{round_idx}.png'
-            torchvision.utils.save_image(samples, save_path, nrow=nrow)
-            print(f"Saved sample images at: {save_path}")
-
-    def _client_sampling(self, round_idx, client_num_in_total, client_num_per_round):
-        if client_num_in_total == client_num_per_round:
-            client_indexes = [client_index for client_index in range(client_num_in_total)]
-        else:
-            num_clients = min(client_num_per_round, client_num_in_total)
-            np.random.seed(round_idx)  # make sure for each comparison, we are selecting the same clients each round
-            client_indexes = np.random.choice(range(client_num_in_total), num_clients, replace=False)
-        self.logger.info("client_indexes = %s" % str(client_indexes))
-        return client_indexes
-
-    def _aggregate(self, w_locals):
-        training_num = 0
-        for idx in range(len(w_locals)):
-            (sample_num, _) = w_locals[idx]
-            training_num += sample_num
-        w_global ={}
-        (sample_num, averaged_params) = w_locals[0]
-        for k in averaged_params.keys():
-            for i in range(0, len(w_locals)):
-                local_sample_number, local_model_params = w_locals[i]
-                w = local_sample_number / training_num
-                if i == 0:
-                    w_global[k] = local_model_params[k] * w
-                else:
-                    w_global[k] += local_model_params[k] * w
-        return w_global
-
-    def _aggregate_control_variates(self, local_control_variates):
-        # Calculate the total number of samples across all clients
-        training_num = sum(num_samples for num_samples, _ in local_control_variates)
-        global_control_variate = {}
-
-        # Initialize the global control variate by aggregating each local control variate
-        for sample_num, control_variate in local_control_variates:
-            weight = sample_num / training_num  # Compute the weight for this client's contribution
-            for k, v in control_variate.items():
-                if k not in global_control_variate:
-                    global_control_variate[k] = v * weight
-                else:
-                    global_control_variate[k] += v * weight
-
-        return global_control_variate
-
-    def _aggregate_ema(self, ema_locals):
-        training_num = sum(num_samples for num_samples, _ in ema_locals)
-        ema_global = {}
-        for sample_num, ema_params in ema_locals:
-            for k in ema_params.keys():
-                if k not in ema_global:
-                    ema_global[k] = ema_params[k] * (sample_num / training_num)
-                else:
-                    ema_global[k] += ema_params[k] * (sample_num / training_num)
-        return ema_global
-
     def init_stat_info(self):
-        self.stat_info = {}
-        self.stat_info["sum_comm_params"] = 0
-        self.stat_info["sum_training_flops"] = 0
-        self.stat_info["global_fid"] = []
-        self.stat_info["final_masks"] = []
+        self.stat_info = {
+            "sum_comm_params": 0,
+            "sum_training_flops": 0,
+            "global_fid": [],
+            "final_masks": []
+        }
