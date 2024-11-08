@@ -65,8 +65,12 @@ class Trainer:
         self.writer = None
         self.global_step = 0
         # Control variates for SCAFFOLD
-        self.global_control_variate = {k: torch.zeros_like(v) for k, v in diffusion_model.state_dict().items()}
-        self.local_control_variate = {k: torch.zeros_like(v) for k, v in diffusion_model.state_dict().items()}
+        # Initialize control variates to match parameter shapes exactly
+        self.global_control_variate = {}
+        self.local_control_variate = {}
+        for name, param in diffusion_model.named_parameters():
+            self.global_control_variate[name] = torch.zeros_like(param)
+            self.local_control_variate[name] = torch.zeros_like(param)
 
         # Use ScaffoldOptimizer
         self.optimizer = ScaffoldOptimizer(self.diffusion_model.parameters(), lr=lr, weight_decay=0)
@@ -169,12 +173,6 @@ class Trainer:
         # Move global control variates to the correct device
         global_control_variate = {k: v.clone().to(self.device) for k, v in self.global_control_variate.items()}
         local_control_variate = {k: v.clone().to(self.device) for k, v in self.local_control_variate.items()}
-        for name, param in self.diffusion_model.named_parameters():
-            print(f"Parameter: {name}, Shape: {param.shape}")
-        for name, control in global_control_variate.items():
-            print(f"Global Control: {name}, Shape: {control.shape}")
-        for name, control in local_control_variate.items():
-            print(f"Local Control: {name}, Shape: {control.shape}")
 
         # Make a copy of the initial model to track parameter changes
         initial_model_params = copy.deepcopy(self.diffusion_model.state_dict())
