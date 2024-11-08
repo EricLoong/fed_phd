@@ -204,32 +204,35 @@ class Trainer:
             average_loss = epoch_loss / num_batches
             self.logger.info(f"Round {round_idx} Epoch {epoch} Average Loss: {average_loss}")
 
-        # Calculate the delta between the final model and the initial global model
-        delta_w = {name: param.to("cpu") - global_params[name].to("cpu") for name, param in
-                   self.diffusion_model.state_dict().items()}
+        # Calculate the delta between the final model and the initial global model on cuda
+        delta_w = {name: param - global_params[name] for name, param in self.diffusion_model.state_dict().items()}
 
-        # Update local control variate to get c_i^+ using the SCAFFOLD formula
+        # Update local control variate to get c_i^+ using the SCAFFOLD formula on cuda
         K = epochs  # Number of local epochs
         eta_l = self.optimizer.param_groups[0]['lr']  # Local learning rate
 
         updated_local_control_variate = {}
         for name in local_control_variate.keys():
             updated_local_control_variate[name] = (
-                    local_control_variate[name].to("cpu")
-                    - global_control_variate[name].to("cpu")
-                    + (1 / (K * eta_l)) * (
-                                global_params[name].to("cpu") - self.diffusion_model.state_dict()[name].to("cpu"))
+                    local_control_variate[name]
+                    - global_control_variate[name]
+                    + (1 / (K * eta_l)) * (global_params[name] - self.diffusion_model.state_dict()[name])
             )
 
-        # Calculate the control variate delta (c_i^+ - c_i)
+        # Calculate the control variate delta (c_i^+ - c_i) on cuda
         delta_c = {name: updated_local_control_variate[name] - local_control_variate[name] for name in
                    local_control_variate.keys()}
+
+        # Move final results to CPU once at the end
+        delta_w = {name: delta.to("cpu") for name, delta in delta_w.items()}
+        delta_c = {name: delta.to("cpu") for name, delta in delta_c.items()}
+        updated_local_control_variate = {name: var.to("cpu") for name, var in updated_local_control_variate.items()}
 
         # Move model back to CPU and clear GPU cache
         self.diffusion_model.to('cpu')
         torch.cuda.empty_cache()
 
-        # Return the model delta and control variate delta after training
+        # Return the model delta, control variate delta, and updated control variate after training
         return delta_w, delta_c, updated_local_control_variate
 
     def ddim_image_generation(self, current_step):
