@@ -18,6 +18,10 @@ class ScaffoldOptimizer(Optimizer):
         if closure is not None:
             loss = closure()
 
+        # Debug: Print the keys in server_controls
+        print(f"Server controls keys: {server_controls.keys()}")
+        print(f"Client controls keys: {client_controls.keys()}")
+
         # Iterate over parameter groups and parameters
         for group in self.param_groups:
             for p, param_name in zip(group['params'], group['name']):
@@ -25,8 +29,12 @@ class ScaffoldOptimizer(Optimizer):
                     continue
 
                 # Retrieve control variates by parameter name
-                c = server_controls[param_name]
-                ci = client_controls[param_name]
+                try:
+                    c = server_controls[param_name]
+                    ci = client_controls[param_name]
+                except KeyError as e:
+                    print(f"Error: {e} not found in controls")
+                    raise
 
                 # Check for shape alignment and apply control variate
                 if p.shape != c.shape or p.shape != ci.shape:
