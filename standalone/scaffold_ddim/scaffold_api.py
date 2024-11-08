@@ -54,7 +54,13 @@ class ScaffoldAPI:
         w_global = self.model_trainer.get_model_params()
         global_control_variate = self.model_trainer.global_control_variate
 
-        for round_idx in range(self.args.comm_round):
+        if not self.args.tqdm:
+            comm_round_iterable = range(self.args.comm_round)
+        else:
+            from tqdm import tqdm
+            comm_round_iterable = tqdm(range(self.args.comm_round), desc="Comm. Rounds", ncols=100)
+
+        for round_idx in comm_round_iterable:
             self.logger.info(f"################ Communication round : {round_idx}")
             delta_w_locals = []
             delta_c_locals = []  # To collect control variate deltas
@@ -126,19 +132,25 @@ class ScaffoldAPI:
 
         return w_global
 
+    # In ScaffoldAPI class, modify the _aggregate_control_variates method:
     def _aggregate_control_variates(self, local_control_variates, sampled_client_count):
-        training_num = sum(num_samples for num_samples, _ in local_control_variates)
-        global_control_variate = {}
+        # Initialize with zeros
+        global_control_variate = {
+            k: torch.zeros_like(v)
+            for k, v in self.model_trainer.get_model_params().items()
+        }
 
+        # Aggregate weighted control variates
+        total_samples = sum(num_samples for num_samples, _ in local_control_variates)
         for sample_num, control_variate in local_control_variates:
-            weight = sample_num / training_num
+            weight = sample_num / total_samples
             for k, v in control_variate.items():
-                global_control_variate[k] = global_control_variate.get(k, 0) + v * weight
+                global_control_variate[k].add_(v * weight)
 
-        # Scale by S/N to adjust the aggregated control variates
+        # Apply scaling factor
         scaling_factor = sampled_client_count / self.args.client_num_in_total
         for k in global_control_variate:
-            global_control_variate[k] *= scaling_factor
+            global_control_variate[k].mul_(scaling_factor)
 
         return global_control_variate
 
