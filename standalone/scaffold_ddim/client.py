@@ -37,10 +37,10 @@ class Client:
         self.model_trainer.global_control_variate = global_control_variate
 
         # Train the model with SCAFFOLD adjustments
-        delta_w, delta_c = self.model_trainer.train(round_idx, local_control_variate)
+        delta_w, delta_c, updated_local_control_variate = self.model_trainer.train(round_idx, local_control_variate)
 
-        # Return both updated model delta and control variate delta
-        return delta_w, delta_c
+        # Return the updated model delta, control variate delta, and the new local control variate
+        return delta_w, delta_c, updated_local_control_variate
 
     def get_sample_number(self):
         return self.train_data_local_num
