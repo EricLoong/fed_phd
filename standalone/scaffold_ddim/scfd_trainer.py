@@ -170,7 +170,10 @@ class Trainer:
 
             for batch_idx, data in enumerate(self.dataLoader):
                 self.optimizer.zero_grad()
-                image = data.to(self.device)
+                #image = data.to(self.device)
+                image, labels = data  # Adjust based on actual structure (e.g., [images, labels])
+                image = image.to(self.device)  # Only apply .to(self.device) on tensors
+
                 loss = self.diffusion_model(image)
                 loss.backward()
 
