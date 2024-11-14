@@ -67,6 +67,7 @@ class ScaffoldAPI:
 
         for round_idx in comm_round_iterable:
             self.logger.info(f"################ Communication round : {round_idx}")
+            w_locals = []
             delta_w_locals = []
             delta_c_locals = []  # To collect control variate deltas
 
@@ -81,18 +82,20 @@ class ScaffoldAPI:
                 local_control_variate = self.client_control_variates[client_idx]
 
                 # Train client and get model delta, control variate delta, and updated local control variate
-                delta_w, delta_c, updated_local_control_variate = client.train(
-                    w_global, global_control_variate, local_control_variate, round_idx
-                )
-
-                delta_w_locals.append((client.get_sample_number(), delta_w))
-                delta_c_locals.append((client.get_sample_number(), delta_c))
+                #delta_w, delta_c, updated_local_control_variate = client.train(
+                #    w_global, global_control_variate, local_control_variate, round_idx
+                #)
+                w_per = client.train(w_global,round_idx)
+                w_locals.append((client.get_sample_number(), copy.deepcopy(w_per)))
+                #delta_w_locals.append((client.get_sample_number(), delta_w))
+                #delta_c_locals.append((client.get_sample_number(), delta_c))
 
                 # Save the updated control variate for this client
-                self.client_control_variates[client_idx] = updated_local_control_variate
+                #self.client_control_variates[client_idx] = updated_local_control_variate
 
             # Aggregate model updates and control variates
-            w_global = self._apply_global_update(w_global, delta_w_locals)
+            #w_global = self._apply_global_update(w_global, delta_w_locals)
+            w_global = self._aggregate(w_locals=w_locals)
             self.global_evaluation(w_global, round_idx)
             global_control_variate = self._aggregate_control_variates(delta_c_locals, sampled_client_count)
 
@@ -159,6 +162,23 @@ class ScaffoldAPI:
             global_control_variate[k].mul_(scaling_factor)
 
         return global_control_variate
+
+    def _aggregate(self, w_locals):
+        training_num = 0
+        for idx in range(len(w_locals)):
+            (sample_num, _) = w_locals[idx]
+            training_num += sample_num
+        w_global ={}
+        (sample_num, averaged_params) = w_locals[0]
+        for k in averaged_params.keys():
+            for i in range(0, len(w_locals)):
+                local_sample_number, local_model_params = w_locals[i]
+                w = local_sample_number / training_num
+                if i == 0:
+                    w_global[k] = local_model_params[k] * w
+                else:
+                    w_global[k] += local_model_params[k] * w
+        return w_global
 
     def save_model_checkpoint(self, w_global, round_idx):
         save_path = self.results_folder / f'global_model_{round_idx}.pt'

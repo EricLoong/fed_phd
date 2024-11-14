@@ -30,18 +30,18 @@ class Client:
         )
         self.dataLoader = DataLoader(self.dataSet, batch_size=self.args.batch_size, shuffle=True, num_workers=0)
 
-    def train(self, w_global, global_control_variate, local_control_variate, round_idx):
+    def train(self, w_global,round_idx):
         # Set the global model parameters and control variate received from the server
         self.model_trainer.set_model_params(w_global)
         self.model_trainer.set_data_loader(self.dataLoader)
-        self.model_trainer.global_control_variate = global_control_variate
+        #self.model_trainer.global_control_variate = global_control_variate
 
         # Train the model with SCAFFOLD adjustments
-        delta_w, delta_c, updated_local_control_variate = self.model_trainer.train(round_idx, local_control_variate)
-
+        #delta_w, delta_c, updated_local_control_variate = self.model_trainer.train(round_idx, local_control_variate)
+        w_local = self.model_trainer.get_model_params()
         # Return the updated model delta, control variate delta, and the new local control variate
-        return delta_w, delta_c, updated_local_control_variate
-
+        #return delta_w, delta_c, updated_local_control_variate
+        return w_local
     def get_sample_number(self):
         return self.train_data_local_num
 

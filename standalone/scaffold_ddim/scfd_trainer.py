@@ -182,11 +182,11 @@ class Trainer:
                 loss.backward()
 
                 # Apply SCAFFOLD correction to gradients
-                for name, param in self.diffusion_model.named_parameters():
-                    if param.grad is not None:
-                        # Ensure correction is on the same device as gradients
-                        correction = (global_control_variate[name] - local_control_variate[name]).to(param.grad.device)
-                        param.grad.data.add_(correction)
+                #for name, param in self.diffusion_model.named_parameters():
+                #    if param.grad is not None:
+                #        # Ensure correction is on the same device as gradients
+                ##        correction = (global_control_variate[name] - local_control_variate[name]).to(param.grad.device)
+                #        param.grad.data.add_(correction)
 
                 # Clip gradients
                 if self.max_grad_norm > 0:
@@ -204,39 +204,39 @@ class Trainer:
             self.logger.info(f"Round {round_idx} Epoch {epoch} Average Loss: {avg_loss}")
 
         # Calculate the delta between final and initial model parameters
-        delta_w = {
-            name: (param - global_params[name])
-            for name, param in self.diffusion_model.state_dict().items()
-        }
+       # delta_w = {
+       #     name: (param - global_params[name])
+       #     for name, param in self.diffusion_model.state_dict().items()
+       # }
 
         # Update local control variate
-        K = epochs * len(self.dataLoader)  # Total number of iterations
-        eta_l = self.optimizer.param_groups[0]['lr']
+        #K = epochs * len(self.dataLoader)  # Total number of iterations
+        #eta_l = self.optimizer.param_groups[0]['lr']
 
-        updated_local_control_variate = {}
-        for name in local_control_variate.keys():
-            updated_local_control_variate[name] = (
-                    local_control_variate[name]
-                    - global_control_variate[name]
-                    + delta_w[name] / (K * eta_l)* 0.8
-            ).to(self.device)
+        #updated_local_control_variate = {}
+        #for name in local_control_variate.keys():
+        #    updated_local_control_variate[name] = (
+        #            local_control_variate[name]
+        #            - global_control_variate[name]
+        #            + delta_w[name] / (K * eta_l)* 0.8
+        #    ).to(self.device)
 
         # Calculate control variate update
-        delta_c = {
-            name: updated_local_control_variate[name] - local_control_variate[name]
-            for name in local_control_variate.keys()
-        }
+        #delta_c = {
+        #    name: updated_local_control_variate[name] - local_control_variate[name]
+        #    for name in local_control_variate.keys()
+        #}
 
         # Move results to CPU before returning
-        delta_w = {name: delta.cpu() for name, delta in delta_w.items()}
-        delta_c = {name: delta.cpu() for name, delta in delta_c.items()}
-        updated_local_control_variate = {name: var.cpu() for name, var in updated_local_control_variate.items()}
+        #delta_w = {name: delta.cpu() for name, delta in delta_w.items()}
+        #delta_c = {name: delta.cpu() for name, delta in delta_c.items()}
+        #updated_local_control_variate = {name: var.cpu() for name, var in updated_local_control_variate.items()}
 
         # Move model back to CPU and clear cache
         self.diffusion_model.cpu()
         torch.cuda.empty_cache()
 
-        return delta_w, delta_c, updated_local_control_variate
+        #return delta_w, delta_c, updated_local_control_variate
 
     def ddim_image_generation(self, current_step):
         with torch.no_grad():
