@@ -185,8 +185,9 @@ class Trainer:
                         param.grad.data.add_(correction)
 
                 # Clip gradients if needed
-                if self.args.max_grad_norm > 0:
-                    torch.nn.utils.clip_grad_norm_(self.diffusion_model.parameters(), self.args.max_grad_norm)
+                #if self.args.max_grad_norm > 0:
+                #    torch.nn.utils.clip_grad_norm_(self.diffusion_model.parameters(), self.args.max_grad_norm)
+                torch.nn.utils.clip_grad_norm_(self.diffusion_model.parameters(), self.max_grad_norm)
 
                 self.optimizer.step()
                 epoch_loss += loss.item()
