@@ -20,32 +20,23 @@ class Client:
         self.logger = logger
         self.data_indices = data_indices
 
-        # Initialize local dataset and data loader
-        self._setup_local_dataloader()
+        # Initialize the dataset and data loader for the client
+        self.dataSet = dataset_wrapper(self.args.dataset, data_dir=self.args.data_dir,
+                                       image_size=self.model_trainer.image_size, partial_data=True,
+                                       net_dataidx_map=self.data_indices)
+        self.dataLoader = DataLoader(self.dataSet, batch_size=self.args.batch_size, shuffle=True, num_workers=0)
 
-    def _setup_local_dataloader(self):
-        # Assuming you have a method to get the dataset based on indices
-        # Replace with your actual data loading logic
-        dataset = self._get_dataset(self.data_indices)
-        self.dataLoader = torch.utils.data.DataLoader(dataset, batch_size=self.args.batch_size, shuffle=True)
+    def train(self, w_global, global_control_variate, local_control_variate, round_idx):
+        # Set the global model parameters and control variate received from the server
+        self.model_trainer.set_model_params(w_global)
+        self.model_trainer.set_data_loader(self.dataLoader)  # Set the client's DataLoader in the Trainer
+        self.model_trainer.global_control_variate = global_control_variate  # Set the global control variate
 
-    def _get_dataset(self, indices):
-        # Replace this with your actual dataset fetching logic
-        # This is a placeholder
-        return torch.utils.data.Subset(self.args.full_dataset, indices)
+        # Train the model with SCAFFOLD adjustments, which now also updates the local control variate
+        updated_local_control_variate, delta_w, delta_c = self.model_trainer.train(round_idx, local_control_variate)
+
+        # Return delta_w, delta_c, and updated local control variate to the server
+        return delta_w, delta_c, updated_local_control_variate
 
     def get_sample_number(self):
         return self.train_data_local_num
-
-    def train(self, w_global, global_control_variate, local_control_variate, round_idx):
-        # Update local model parameters to the global parameters
-        self.model_trainer.set_model_params(w_global)
-        self.model_trainer.global_control_variate = global_control_variate
-
-        # Set the local data loader for the trainer
-        self.model_trainer.set_data_loader(self.dataLoader)
-
-        # Perform local training and get updates
-        delta_w, delta_c, updated_local_control_variate = self.model_trainer.train(round_idx, local_control_variate)
-
-        return delta_w, delta_c, updated_local_control_variate
