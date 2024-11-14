@@ -93,6 +93,7 @@ class ScaffoldAPI:
 
             # Aggregate model updates and control variates
             w_global = self._apply_global_update(w_global, delta_w_locals)
+            self.global_evaluation(w_global, round_idx)
             global_control_variate = self._aggregate_control_variates(delta_c_locals, sampled_client_count)
 
             # Update global parameters

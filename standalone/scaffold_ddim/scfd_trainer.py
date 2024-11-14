@@ -218,7 +218,7 @@ class Trainer:
             updated_local_control_variate[name] = (
                     local_control_variate[name]
                     - global_control_variate[name]
-                    + delta_w[name] / (K * eta_l)
+                    + delta_w[name] / (K * eta_l)* 0.8
             ).to(self.device)
 
         # Calculate control variate update
