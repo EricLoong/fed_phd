@@ -60,6 +60,7 @@ class Trainer:
         self.cal_is = args.calculate_is
         self.tqdm_sampler_name = None
         self.tensorboard_name = None
+        self.max_grad_norm = 1
         self.writer = None
         self.global_step = 0
         self.global_control_variate = {k: torch.zeros_like(v) for k, v in diffusion_model.state_dict().items()}
