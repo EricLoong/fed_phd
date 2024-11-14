@@ -25,7 +25,7 @@ class ScaffoldAPI:
         self.init_stat_info()
         self.results_folder = Path('./results')
         self.best_fid = float('inf')
-        self.reset_interval = 10
+        self.reset_interval = 10  # Interval for resetting control variates
 
     def _setup_clients(self, train_data_local_num_dict, data_map_idx):
         self.logger.info("############ Setup Clients (START) #############")
@@ -64,27 +64,26 @@ class ScaffoldAPI:
             # Periodic reset of control variates every `reset_interval` rounds
             if round_idx % self.reset_interval == 0:
                 self.logger.info("Resetting control variates to zero for stabilization.")
-                self.client_control_variates = [torch.zeros_like(var) for var in self.client_control_variates]
+                self.client_control_variates = {
+                    client_idx: {k: torch.zeros_like(v) for k, v in control_variate.items()}
+                    for client_idx, control_variate in self.client_control_variates.items()
+                }
                 global_control_variate = {k: torch.zeros_like(v) for k, v in global_control_variate.items()}
 
             # Sample clients for the current round
-            client_indexes = self._client_sampling(round_idx, self.args.client_num_in_total,
-                                                   self.args.client_num_per_round)
+            client_indexes = self._client_sampling(round_idx, self.args.client_num_in_total, self.args.client_num_per_round)
             for client_idx in client_indexes:
                 client = self.client_list[client_idx]
                 local_control_variate = self.client_control_variates[client_idx]
 
                 # Train client and get model delta, control variate delta, and updated local control variate
-                delta_w, delta_c, updated_local_control_variate = client.train(w_global, global_control_variate,
-                                                                               local_control_variate, round_idx)
+                delta_w, delta_c, updated_local_control_variate = client.train(w_global, global_control_variate, local_control_variate, round_idx)
 
                 # Log the norms for debugging purposes
                 for name, delta in delta_w.items():
-                    self.logger.info(
-                        f"Round {round_idx}, Client {client_idx}, Norm of delta_w[{name}]: {torch.norm(delta)}")
+                    self.logger.info(f"Round {round_idx}, Client {client_idx}, Norm of delta_w[{name}]: {torch.norm(delta)}")
                 for name, delta in delta_c.items():
-                    self.logger.info(
-                        f"Round {round_idx}, Client {client_idx}, Norm of delta_c[{name}]: {torch.norm(delta)}")
+                    self.logger.info(f"Round {round_idx}, Client {client_idx}, Norm of delta_c[{name}]: {torch.norm(delta)}")
 
                 delta_w_locals.append((client.get_sample_number(), delta_w))
                 delta_c_locals.append((client.get_sample_number(), delta_c))
@@ -138,7 +137,6 @@ class ScaffoldAPI:
 
         return w_global
 
-    # In ScaffoldAPI class, modify the _aggregate_control_variates method:
     def _aggregate_control_variates(self, local_control_variates, sampled_client_count):
         # Initialize with zeros
         global_control_variate = {
