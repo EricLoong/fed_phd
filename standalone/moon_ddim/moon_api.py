@@ -11,7 +11,7 @@ from standalone.fedavg_ddim.client import Client
 from pathlib import Path
 import math
 
-class fedavg_api(object):
+class MOONAPI(object):
     def __init__(self, dataset_info, device, args, model_trainer, logger):
         self.logger = logger
         self.device = device
