@@ -178,8 +178,8 @@ class MOONTrainer:
 
                 total_loss = total_loss / gradient_accumulate_every  # Scale loss by accumulation steps
                 print("Device of inputs:", image.device)
-                print("Device of model parameters:", [param.device for param in self.diffusion_model.parameters()])
-                #print("Device of global_params:", [v.device for k, v in global_params.items()])
+                #print("Device of model parameters:", [param.device for param in self.diffusion_model.parameters()])
+                print("Device of global_params:", [v.device for k, v in global_params.items()])
                 #print("Device of w_past:", [v.device for k, v in w_past.items()])
                 print("Device of loss:", loss.device)
                 print("Device of contrastive_loss:", contrastive_loss.device)
