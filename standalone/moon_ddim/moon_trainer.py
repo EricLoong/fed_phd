@@ -149,6 +149,8 @@ class MOONTrainer:
         self.diffusion_model.to(self.device)  # Move the model to the device
         global_params = {k: v.clone() for k, v in
                          self.diffusion_model.state_dict().items()}  # Store the global parameters
+        global_params = {k: v.to(self.device) for k, v in global_params.items()}
+        w_past = {k: v.to(self.device) for k, v in w_past.items()}
 
         for epoch in range(epochs):
             self.diffusion_model.train()
@@ -221,8 +223,9 @@ class MOONTrainer:
 
     def _cosine_similarity(self, model_params_a, model_params_b):
         """Compute cosine similarity between two sets of model parameters."""
-        vector_a = torch.cat([param.flatten() for param in model_params_a.values()])
-        vector_b = torch.cat([param.flatten() for param in model_params_b.values()])
+        # Move parameters to the same device as self.device
+        vector_a = torch.cat([param.flatten().to(self.device) for param in model_params_a.values()])
+        vector_b = torch.cat([param.flatten().to(self.device) for param in model_params_b.values()])
         return F.cosine_similarity(vector_a, vector_b, dim=0)
 
     def ddim_image_generation(self, current_step):
