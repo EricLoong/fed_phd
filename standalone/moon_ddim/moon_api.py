@@ -7,7 +7,7 @@ import numpy as np
 import torch
 from standalone.fedavg_ddim.init_trainer import Trainer
 import torchvision
-from standalone.fedavg_ddim.client import Client
+from standalone.moon_ddim.client import Client
 from pathlib import Path
 import math
 
