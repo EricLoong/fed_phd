@@ -146,11 +146,14 @@ class MOONTrainer:
     def train(self, round_idx,w_past):
         epochs = self.args.epochs
         gradient_accumulate_every = self.args.gradient_accumulate_every  # Define this in your args
-        self.diffusion_model.to(self.device)  # Move the model to the device
+        #self.diffusion_model.to(self.device)  # Move the model to the device
         global_params = {k: v.clone().to(self.device) for k, v in
                          self.diffusion_model.state_dict().items()}  # Store the global parameters
         #global_params = {k: v.to(self.device) for k, v in global_params.items()}
         w_past = {k: v.to(self.device) for k, v in w_past.items()}
+        self.diffusion_model.to(self.device)
+        print("Device of model parameters after transfer:",
+              [param.device for param in self.diffusion_model.parameters()])
 
         for epoch in range(epochs):
             self.diffusion_model.train()
@@ -178,11 +181,11 @@ class MOONTrainer:
 
                 total_loss = total_loss / gradient_accumulate_every  # Scale loss by accumulation steps
                 #print("Device of inputs:", image.device)
-                #print("Device of model parameters:", [param.device for param in self.diffusion_model.parameters()])
+                print("Device of model parameters:", [param.device for param in self.diffusion_model.parameters()])
                 #print("Device of global_params:", [v.device for k, v in global_params.items()])
-                print("Device of w_past:", [v.device for k, v in w_past.items()])
-                print("Device of loss:", loss.device)
-                print("Device of contrastive_loss:", contrastive_loss.device)
+                #print("Device of w_past:", [v.device for k, v in w_past.items()])
+                #print("Device of loss:", loss.device)
+                #print("Device of contrastive_loss:", contrastive_loss.device)
 
                 # Backward and optimize
                 total_loss.backward()
