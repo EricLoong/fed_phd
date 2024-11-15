@@ -143,100 +143,113 @@ class MOONTrainer:
     def set_id(self, trainer_id):
         self.id = trainer_id
 
-    def train(self, round_idx,w_past):
+    def _compute_contrastive_loss(self, global_params, past_params):
+        """Calculate the MOON contrastive loss between the global model and the past model."""
+        # Get current model parameters and ensure they're on the correct device
+        current_model = self.diffusion_model.state_dict()
+        current_params = {}
+        for name, param in current_model.items():
+            current_params[name] = param.to(self.device)
+
+        # Ensure all parameters are on the same device
+        global_params = {k: v.to(self.device) for k, v in global_params.items()}
+        past_params = {k: v.to(self.device) for k, v in past_params.items()}
+
+        # Compute cosine similarities
+        sim_global = self._cosine_similarity(current_params, global_params)
+        sim_past = self._cosine_similarity(current_params, past_params)
+
+        # Compute contrastive loss
+        contrastive_loss = -torch.log(torch.sigmoid(sim_global - sim_past))
+        return contrastive_loss
+
+    def _cosine_similarity(self, model_params_a, model_params_b):
+        """Compute cosine similarity between two sets of model parameters."""
+        # Flatten and concatenate parameters, ensuring they're on the correct device
+        vector_a = []
+        vector_b = []
+
+        for name in model_params_a.keys():
+            if name in model_params_b:
+                # Ensure parameters are on the correct device
+                param_a = model_params_a[name].to(self.device)
+                param_b = model_params_b[name].to(self.device)
+
+                # Flatten parameters
+                vector_a.append(param_a.view(-1))
+                vector_b.append(param_b.view(-1))
+
+        # Concatenate all flattened parameters
+        vector_a = torch.cat(vector_a)
+        vector_b = torch.cat(vector_b)
+
+        # Compute cosine similarity
+        return F.cosine_similarity(vector_a.unsqueeze(0), vector_b.unsqueeze(0), dim=1)[0]
+
+    def train(self, round_idx, w_past):
         epochs = self.args.epochs
-        gradient_accumulate_every = self.args.gradient_accumulate_every  # Define this in your args
-        #self.diffusion_model.to(self.device)  # Move the model to the device
-        global_params = {k: v.clone().to(self.device) for k, v in
-                         self.diffusion_model.state_dict().items()}  # Store the global parameters
-        #global_params = {k: v.to(self.device) for k, v in global_params.items()}
-        w_past = {k: v.to(self.device) for k, v in w_past.items()}
+        gradient_accumulate_every = self.args.gradient_accumulate_every
+
+        # Move model to device at the start
         self.diffusion_model.to(self.device)
-        print("Device of model parameters after transfer:",
-              [param.device for param in self.diffusion_model.parameters()])
+
+        # Ensure global parameters and past parameters are on the correct device
+        global_params = {k: v.clone().to(self.device) for k, v in self.diffusion_model.state_dict().items()}
+        w_past = {k: v.to(self.device) for k, v in w_past.items()}
 
         for epoch in range(epochs):
             self.diffusion_model.train()
-            epoch_loss = 0  # Initialize variable to accumulate loss
-            num_batches = 0  # To count the number of batches
+            epoch_loss = 0
+            num_batches = 0
 
             self.logger.info(f"Starting epoch {epoch + 1}/{epochs}")
 
-            for batch_idx, data in enumerate(self.dataLoader):  # Iterate through all batches
+            for batch_idx, data in enumerate(self.dataLoader):
                 if batch_idx % gradient_accumulate_every == 0:
-                    self.optimizer.zero_grad()  # Reset gradients at the start of each accumulation cycle
+                    self.optimizer.zero_grad()
 
+                # Handle data loading and device placement
                 if isinstance(data, (tuple, list)):
-                    # Dataset with labels (e.g., CIFAR10)
                     image, _ = data
                 else:
                     image = data
-
                 image = image.to(self.device)
+
+                # Forward pass
                 loss = self.diffusion_model(image)
 
-                # Compute MOON-specific contrastive loss
+                # Compute contrastive loss
                 contrastive_loss = self._compute_contrastive_loss(global_params, w_past)
                 total_loss = loss + self.args.contrastive_loss_weight * contrastive_loss
 
-                total_loss = total_loss / gradient_accumulate_every  # Scale loss by accumulation steps
-                #print("Device of inputs:", image.device)
-                #print("Device of model parameters:", [param.device for param in self.diffusion_model.parameters()])
-                #print("Device of global_params:", [v.device for k, v in global_params.items()])
-                #print("Device of w_past:", [v.device for k, v in w_past.items()])
-                #print("Device of loss:", loss.device)
-                #print("Device of contrastive_loss:", contrastive_loss.device)
+                # Scale loss for gradient accumulation
+                total_loss = total_loss / gradient_accumulate_every
 
-                # Backward and optimize
+                # Backward pass
                 total_loss.backward()
 
-
-
-                # If we have accumulated gradients for `gradient_accumulate_every` batches
+                # Update weights if needed
                 if (batch_idx + 1) % gradient_accumulate_every == 0 or (batch_idx + 1) == len(self.dataLoader):
                     nn.utils.clip_grad_norm_(self.diffusion_model.parameters(), self.max_grad_norm)
-                    self.optimizer.step()  # Update the model parameters
+                    self.optimizer.step()
 
                     if self.scheduler:
-                        self.scheduler.step()  # Step the scheduler after each accumulation cycle
+                        self.scheduler.step()
 
-                epoch_loss += total_loss.item() * gradient_accumulate_every  # Accumulate the loss
+                epoch_loss += total_loss.item() * gradient_accumulate_every
                 num_batches += 1
 
-            # Calculate the average loss for the epoch
+            # Calculate and log average loss
             average_loss = epoch_loss / num_batches
-
             self.logger.info(f"Round {round_idx} Epoch {epoch} Average Loss: {average_loss}")
 
             if self.args.central_train:
                 self.ddim_image_generation(epoch)
                 self.ddim_fid_calculation(epoch)
 
-        # Move the model back to CPU to free up GPU memory
-        self.diffusion_model.to('cpu')
-
+        # Move model back to CPU after training
+        self.diffusion_model.cpu()
         torch.cuda.empty_cache()
-
-    def _compute_contrastive_loss(self, global_params, past_params):
-        """Calculate the MOON contrastive loss between the global model and the past model."""
-        model_params = self.get_model_params()
-
-        # Cosine similarity with global model parameters
-        sim_global = self._cosine_similarity(model_params, global_params)
-
-        # Cosine similarity with past model parameters
-        sim_past = self._cosine_similarity(model_params, past_params)
-
-        # Contrastive loss: encourages similarity with the global model and discourages similarity with past model
-        contrastive_loss = -torch.log(torch.sigmoid(sim_global - sim_past))
-        return contrastive_loss
-
-    def _cosine_similarity(self, model_params_a, model_params_b):
-        """Compute cosine similarity between two sets of model parameters."""
-        # Move parameters to the same device as self.device
-        vector_a = torch.cat([param.flatten().to(self.device) for param in model_params_a.values()])
-        vector_b = torch.cat([param.flatten().to(self.device) for param in model_params_b.values()])
-        return F.cosine_similarity(vector_a, vector_b, dim=0)
 
     def ddim_image_generation(self, current_step):
         with torch.no_grad():
