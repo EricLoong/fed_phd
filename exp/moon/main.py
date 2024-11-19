@@ -201,7 +201,7 @@ if __name__ == "__main__":
     args.identity = "moon" + "-" + data_partition
     args.identity += "-{}".format(args.dataset)
     args.client_num_per_round = int(args.client_num_in_total * args.frac)
-    #args.identity += "-mdl" + args.model_name
+    args.identity += "-loss_weight" + args.contrastive_loss_weight
     args.identity += (
         "-cm" + str(args.comm_round) + "-total_clnt" + str(args.client_num_in_total)
     )
