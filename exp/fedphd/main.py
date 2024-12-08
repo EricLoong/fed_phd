@@ -8,23 +8,23 @@ import copy
 import random
 
 
-def set_directory_to_fed_diff():
+def set_directory_to_fed_phd():
     pwd = os.getcwd()
     parts = pwd.split(os.path.sep)
 
-    if 'fed_diff' in parts:
-        index = parts.index('fed_diff')
+    if 'fed_phd' in parts:
+        index = parts.index('fed_phd')
         new_path = os.path.sep.join(parts[:index + 1])
         sys.path.insert(0, new_path)
         print(f"Directory set to: {new_path}")
         return new_path
     else:
-        print("The directory 'fed_diff' was not found in the current path.")
+        print("The directory 'fed_phd' was not found in the current path.")
         return None
 
 # Set the directory to the root of the project
 # This is to ensure that the project modules can be imported
-base_path = set_directory_to_fed_diff()
+base_path = set_directory_to_fed_phd()
 
 # from utils.centralized_src.model_original import Unet
 from utils.centralized_src.diffusion import GaussianDiffusion, DDIM_Sampler
@@ -60,7 +60,7 @@ def add_args(parser):
                         help='dataset used for training (options: cifar10, celeba)')
 
     parser.add_argument('--data_dir', type=str,
-                        default=os.path.join(base_path, 'data') if base_path else '/nfs/fed_diff/data/',
+                        default=os.path.join(base_path, 'data') if base_path else '/nfs/fed_phd/data/',
                         help='Data directory')
     parser.add_argument('--results_dir', type=str, default='./results', help='Results directory')
 
